@@ -14,15 +14,12 @@ discord:
 
 # Channel Configuration
 channels:
-  airdrops: "airdrops"
-  mines: "mines"
-  lakes: "lakes"
-  alley: "alley"
-  stash: "stash"
-  nexus: "nexus"
-  arena: "arena"
-  shop: "shop"
-  bank: "bank"
+  # Survey Bot channels (optional - will be created if needed)
+  survey_notifications: "survey-notifications"
+  earnings_updates: "earnings-updates"
+  error_logs: "error-logs"
+  system_status: "system-status"
+  withdrawal_confirmations: "withdrawal-confirmations"
 
 # CPX Research Configuration
 cpx_research:

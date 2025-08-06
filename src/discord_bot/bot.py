@@ -13,6 +13,9 @@ from typing import Dict, Any
 from .events.ready_event import ReadyEvent
 from .events.message_event import MessageEvent
 from .handlers.survey_handler import SurveyHandler
+from src.utils.config_manager import ConfigManager
+from src.utils.database_manager import DatabaseManager
+from src.utils.webhook_manager import WebhookManager
 
 
 
@@ -37,6 +40,7 @@ class SurveyBot(commands.Bot):
         self.config = config
         self.db_manager = db_manager
         self.survey_handler = SurveyHandler(config, db_manager)
+        self.webhook_manager = WebhookManager()
         
         # Store channel references
         self.channels = {}
@@ -44,6 +48,8 @@ class SurveyBot(commands.Bot):
         # Setup event handlers
         self.setup_events()
         self.setup_commands()
+        
+        # Slash commands will be loaded in on_ready
         
         logger.info("SurveyBot initialized successfully")
     
@@ -79,6 +85,17 @@ class SurveyBot(commands.Bot):
                 elif action == "start":
                     await ctx.send("🔍 Starting survey automation...")
                     # This would trigger the survey automation
+                    
+                    # Send system notification
+                    self.webhook_manager.send_system_status(
+                        "info",
+                        "Survey automation started by user",
+                        {
+                            "User": ctx.author.name,
+                            "Server": ctx.guild.name,
+                            "Channel": ctx.channel.name
+                        }
+                    )
                     
                 elif action == "earnings":
                     earnings_data = await self.db_manager.get_earnings()
@@ -171,6 +188,37 @@ class SurveyBot(commands.Bot):
             except Exception as e:
                 logger.error(f"Error in status command: {e}")
                 await ctx.send("❌ Error getting bot status")
+        
+        @self.command(name="withdraw")
+        async def withdraw(ctx, amount: float = None):
+            """Withdraw earnings to tip.cc wallet."""
+            try:
+                if amount is None:
+                    await ctx.send("❌ Please specify an amount: !withdraw [amount]")
+                    return
+                
+                earnings_data = await self.db_manager.get_earnings()
+                available = earnings_data['total']
+                
+                if amount > available:
+                    await ctx.send(f"❌ Insufficient funds. Available: ${available:.2f}")
+                    return
+                
+                # Process withdrawal
+                await self.db_manager.update_earnings(-amount)
+                await ctx.send(f"✅ Withdrawn ${amount:.2f} to tip.cc wallet")
+                
+                # Send withdrawal notification
+                self.webhook_manager.send_withdrawal_confirmation(
+                    amount=amount,
+                    method="tip.cc wallet",
+                    transaction_id=f"TXN_{ctx.author.id}_{int(asyncio.get_event_loop().time())}"
+                )
+                
+            except Exception as e:
+                logger.error(f"Error in withdraw command: {e}")
+                await ctx.send("❌ Error processing withdrawal")
+                self.webhook_manager.send_error_report("Withdrawal Error", str(e), f"User: {ctx.author.name}")
         
         @self.command(name="earnings")
         async def earnings(ctx):
@@ -394,8 +442,23 @@ class SurveyBot(commands.Bot):
             # Set bot status
             await self.change_presence(activity=discord.Game(name="Surveys | !help"))
             
+            # Load slash commands
+            await self.load_slash_commands()
+            
+            # Send system status notification
+            self.webhook_manager.send_system_status(
+                "online", 
+                "Survey Bot is now online and ready to process surveys!",
+                {
+                    "Bot Name": self.user.name,
+                    "Bot ID": self.user.id,
+                    "Servers": len(self.guilds)
+                }
+            )
+            
         except Exception as e:
             logger.error(f"Error in on_ready: {e}")
+            self.webhook_manager.send_error_report("Startup Error", str(e))
     
     async def on_message(self, message):
         """Handle incoming messages."""
@@ -489,6 +552,28 @@ class SurveyBot(commands.Bot):
     async def __aenter__(self):
         """Async context manager entry."""
         return self
+    
+    async def load_slash_commands(self):
+        """Load and register slash commands."""
+        try:
+            # Import and setup slash commands
+            from .slash_commands import setup, register_commands
+            
+            # Setup the cog
+            await setup(self)
+            
+            # Register commands with Discord (both globally and per guild)
+            await self.tree.sync()  # Global sync
+            
+            # Also sync to each guild for immediate availability
+            for guild in self.guilds:
+                await self.tree.sync(guild=guild)
+                logger.info(f"✅ Commands synced to guild: {guild.name}")
+            
+            logger.info("✅ Slash commands loaded and synced successfully")
+            
+        except Exception as e:
+            logger.error(f"❌ Error loading slash commands: {e}")
     
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit."""
