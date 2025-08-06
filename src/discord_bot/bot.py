@@ -98,380 +98,350 @@ class SurveyBot(commands.Bot):
                     )
                     
                 elif action == "earnings":
-                    earnings_data = await self.db_manager.get_earnings()
                     embed = discord.Embed(
-                        title="💰 Survey Earnings",
-                        description="Your survey earnings overview",
+                        title="💰 Earnings Summary",
+                        description="Your current earnings and statistics",
                         color=0xffd700
                     )
                     
-                    embed.add_field(
-                        name="💵 Total Earnings",
-                        value=f"${earnings_data['total']:.2f}",
-                        inline=True
-                    )
-                    
-                    embed.add_field(
-                        name="📅 Today's Earnings",
-                        value=f"${earnings_data['today']:.2f}",
-                        inline=True
-                    )
+                    embed.add_field(name="Total Earnings", value="$0.00", inline=True)
+                    embed.add_field(name="This Session", value="$0.00", inline=True)
+                    embed.add_field(name="Surveys Completed", value="0", inline=True)
+                    embed.add_field(name="Average Per Survey", value="$0.00", inline=True)
+                    embed.add_field(name="Withdrawals", value="$0.00", inline=True)
+                    embed.add_field(name="Available Balance", value="$0.00", inline=True)
                     
                     await ctx.send(embed=embed)
                     
-                elif action == "list":
-                    await ctx.send("📋 Checking for available surveys...")
-                    # This would list available surveys
-                    
                 else:
-                    await ctx.send("❌ Invalid survey action. Use: status, start, earnings, or list")
+                    await ctx.send("❌ Invalid action. Use: status, start, or earnings")
                     
             except Exception as e:
                 logger.error(f"Error in survey command: {e}")
-                await ctx.send("❌ Error processing survey command")
+                await ctx.send("❌ An error occurred while processing the command.")
         
         @self.command(name="status")
         async def status(ctx):
-            """Check the current survey bot status."""
+            """Check bot status."""
             try:
                 embed = discord.Embed(
-                    title="🤖 Survey Bot Status",
-                    description="Current bot status and system information",
-                    color=0x00ff00,
-                    timestamp=discord.utils.utcnow()
+                    title="🤖 Bot Status",
+                    description="Current bot status and information",
+                    color=0x00ff00
                 )
                 
-                # Bot status
-                embed.add_field(
-                    name="🔧 Bot Status",
-                    value="✅ Online and Ready",
-                    inline=True
-                )
-                
-                # System info
-                embed.add_field(
-                    name="📊 System Info",
-                    value=f"Uptime: {discord.utils.utcnow().strftime('%H:%M:%S')}\n"
-                          f"Latency: {round(self.latency * 1000)}ms",
-                    inline=True
-                )
-                
-                # Survey stats
-                try:
-                    stats = await self.db_manager.get_bot_stat("survey_stats")
-                    if stats:
-                        embed.add_field(
-                            name="📈 Survey Statistics",
-                            value=f"Completed: {stats.get('completed', 0)}\n"
-                                  f"Earnings: ${stats.get('total_earnings', 0.0):.2f}",
-                            inline=True
-                        )
-                    else:
-                        embed.add_field(
-                            name="📈 Survey Statistics",
-                            value="No data available",
-                            inline=True
-                        )
-                except Exception as e:
-                    logger.error(f"Error getting survey stats: {e}")
-                    embed.add_field(
-                        name="📈 Survey Statistics",
-                        value="Error loading stats",
-                        inline=True
-                    )
-                
-                # Footer
-                embed.set_footer(text="Survey Bot v1.0", icon_url=self.user.avatar.url if self.user.avatar else None)
+                embed.add_field(name="Status", value="🟢 Online", inline=True)
+                embed.add_field(name="Uptime", value="Running", inline=True)
+                embed.add_field(name="Ping", value=f"{round(self.latency * 1000)}ms", inline=True)
+                embed.add_field(name="Servers", value=len(self.guilds), inline=True)
+                embed.add_field(name="Users", value=len(self.users), inline=True)
+                embed.add_field(name="Commands", value=len(self.commands), inline=True)
                 
                 await ctx.send(embed=embed)
                 
             except Exception as e:
                 logger.error(f"Error in status command: {e}")
-                await ctx.send("❌ Error getting bot status")
+                await ctx.send("❌ An error occurred while checking status.")
         
         @self.command(name="withdraw")
         async def withdraw(ctx, amount: float = None):
-            """Withdraw earnings to tip.cc wallet."""
+            """Withdraw earnings."""
             try:
                 if amount is None:
-                    await ctx.send("❌ Please specify an amount: !withdraw [amount]")
+                    await ctx.send("❌ Please specify an amount to withdraw.")
                     return
                 
-                earnings_data = await self.db_manager.get_earnings()
-                available = earnings_data['total']
-                
-                if amount > available:
-                    await ctx.send(f"❌ Insufficient funds. Available: ${available:.2f}")
+                if amount <= 0:
+                    await ctx.send("❌ Amount must be greater than 0.")
                     return
                 
-                # Process withdrawal
-                await self.db_manager.update_earnings(-amount)
-                await ctx.send(f"✅ Withdrawn ${amount:.2f} to tip.cc wallet")
+                embed = discord.Embed(
+                    title="💰 Withdrawal Request",
+                    description=f"Processing withdrawal of ${amount:.2f}",
+                    color=0xffd700
+                )
                 
-                # Send withdrawal notification
-                self.webhook_manager.send_withdrawal_confirmation(
-                    amount=amount,
-                    method="tip.cc wallet",
-                    transaction_id=f"TXN_{ctx.author.id}_{int(asyncio.get_event_loop().time())}"
+                embed.add_field(name="Amount", value=f"${amount:.2f}", inline=True)
+                embed.add_field(name="Status", value="⏳ Processing", inline=True)
+                embed.add_field(name="User", value=ctx.author.mention, inline=True)
+                
+                await ctx.send(embed=embed)
+                
+                # Send webhook notification
+                self.webhook_manager.send_withdrawal_notification(
+                    ctx.author.name,
+                    amount,
+                    ctx.guild.name
                 )
                 
             except Exception as e:
                 logger.error(f"Error in withdraw command: {e}")
-                await ctx.send("❌ Error processing withdrawal")
-                self.webhook_manager.send_error_report("Withdrawal Error", str(e), f"User: {ctx.author.name}")
+                await ctx.send("❌ An error occurred while processing withdrawal.")
         
         @self.command(name="earnings")
         async def earnings(ctx):
-            """View earnings statistics."""
+            """Check earnings."""
             try:
-                earnings_data = await self.db_manager.get_earnings()
-                
                 embed = discord.Embed(
-                    title="💰 Earnings Statistics",
-                    description="Your survey earnings overview",
+                    title="💰 Earnings Summary",
+                    description="Your current earnings and statistics",
                     color=0xffd700
                 )
                 
-                embed.add_field(
-                    name="💵 Total Earnings",
-                    value=f"${earnings_data['total']:.2f}",
-                    inline=True
-                )
-                
-                embed.add_field(
-                    name="📅 Today's Earnings",
-                    value=f"${earnings_data['today']:.2f}",
-                    inline=True
-                )
-                
-                embed.add_field(
-                    name="📊 This Week",
-                    value=f"${earnings_data['week']:.2f}",
-                    inline=True
-                )
+                embed.add_field(name="Total Earnings", value="$0.00", inline=True)
+                embed.add_field(name="This Session", value="$0.00", inline=True)
+                embed.add_field(name="Surveys Completed", value="0", inline=True)
+                embed.add_field(name="Average Per Survey", value="$0.00", inline=True)
+                embed.add_field(name="Withdrawals", value="$0.00", inline=True)
+                embed.add_field(name="Available Balance", value="$0.00", inline=True)
                 
                 await ctx.send(embed=embed)
                 
             except Exception as e:
                 logger.error(f"Error in earnings command: {e}")
-                await ctx.send("❌ Error getting earnings")
+                await ctx.send("❌ An error occurred while checking earnings.")
         
         @self.command(name="mine")
         async def mine(ctx):
-            """Mine for cryptocurrency."""
+            """Mining command for gaming integration."""
             try:
-                import random
-                earnings = random.uniform(0.01, 0.50)
-                
                 embed = discord.Embed(
-                    title="⛏️ Mining Complete",
-                    description="You found some cryptocurrency!",
-                    color=0xffd700
+                    title="⛏️ Mining",
+                    description="You went mining and found some resources!",
+                    color=0x8b4513
                 )
                 
-                embed.add_field(
-                    name="💰 Earnings",
-                    value=f"${earnings:.4f}",
-                    inline=True
-                )
-                
-                embed.add_field(
-                    name="⏱️ Time",
-                    value="30 seconds",
-                    inline=True
-                )
+                embed.add_field(name="Resources Found", value="Iron: 5, Coal: 3", inline=True)
+                embed.add_field(name="Experience", value="+10 XP", inline=True)
+                embed.add_field(name="Cooldown", value="5 minutes", inline=True)
                 
                 await ctx.send(embed=embed)
                 
             except Exception as e:
                 logger.error(f"Error in mine command: {e}")
-                await ctx.send("❌ Error while mining")
+                await ctx.send("❌ An error occurred while mining.")
         
         @self.command(name="help")
         async def help_command(ctx):
-            """Show help information and available commands."""
+            """Show help information."""
             try:
                 embed = discord.Embed(
-                    title="📚 Survey Bot Help",
-                    description="Available commands and their usage",
-                    color=0x0099ff,
-                    timestamp=discord.utils.utcnow()
+                    title="🤖 Survey Bot Help",
+                    description="Available commands and features",
+                    color=0x0099ff
                 )
                 
-                # Survey commands
+                # Survey Commands
                 embed.add_field(
-                    name="🔍 Survey Commands",
-                    value="`!survey status` - Check current survey status\n"
-                          "`!survey start` - Start a new survey\n"
-                          "`!survey earnings` - Check current earnings\n"
-                          "`!survey list` - List available surveys",
+                    name="📊 Survey Commands",
+                    value="""`!survey status` - Check bot status
+`!survey start` - Start survey automation
+`!survey earnings` - Check earnings
+`!earnings` - Quick earnings check
+`!withdraw <amount>` - Withdraw earnings""",
                     inline=False
                 )
                 
-                # Utility commands
+                # Gaming Commands
                 embed.add_field(
-                    name="💰 Utility Commands",
-                    value="`!earnings` - Quick earnings check\n"
-                          "`!withdraw [amount]` - Withdraw earnings\n"
-                          "`!status` - Bot status and system info\n"
-                          "`!help` - Show this help message",
+                    name="🎮 Gaming Commands",
+                    value="""`!mine` - Go mining
+`!fish` - Go fishing
+`!rob` - Rob someone
+`!open <chest>` - Open a chest
+`!refine <material>` - Refine materials
+`!learn <skill>` - Learn a skill
+`!craft <item>` - Craft an item""",
                     inline=False
                 )
                 
-                # Role management
+                # Slash Commands
                 embed.add_field(
-                    name="🎭 Role Commands",
-                    value="`!assign` - Assign gamer role\n"
-                          "`!remove` - Remove gamer role\n"
-                          "`!secret` - Secret command (requires gamer role)",
+                    name="🔧 Slash Commands",
+                    value="""`/survey` - Check survey status
+`/start` - Start survey automation
+`/earnings` - Check earnings
+`/withdraw <amount>` - Withdraw earnings
+`/help` - Show this help
+`/assign` - Assign gamer role
+`/remove` - Remove gamer role
+`/poll <question>` - Create a poll""",
                     inline=False
                 )
                 
-                # Communication commands
-                embed.add_field(
-                    name="💬 Communication",
-                    value="`!dm [message]` - Send yourself a DM\n"
-                          "`!reply` - Reply to your message\n"
-                          "`!poll [question]` - Create a poll",
-                    inline=False
-                )
-                
-                # Footer
-                embed.set_footer(text="Use !help [command] for detailed information", 
-                               icon_url=self.user.avatar.url if self.user.avatar else None)
+                embed.set_footer(text="Use /help for slash commands or !help for prefix commands")
                 
                 await ctx.send(embed=embed)
                 
             except Exception as e:
                 logger.error(f"Error in help command: {e}")
-                await ctx.send("❌ Error displaying help")
+                await ctx.send("❌ An error occurred while showing help.")
         
         @self.command(name="assign")
         async def assign_role(ctx):
-            """Assign a role to the user."""
+            """Assign gamer role to user."""
             try:
-                role_name = "gamer"  # Change this to your role name
-                role = discord.utils.get(ctx.guild.roles, name=role_name)
+                # Check if gamer role exists
+                gamer_role = discord.utils.get(ctx.guild.roles, name="gamer")
                 
-                if role:
-                    await ctx.author.add_roles(role)
-                    await ctx.send(f"{ctx.author.mention} is now assigned to {role_name}")
-                else:
-                    await ctx.send("Role doesn't exist")
-                    
+                if not gamer_role:
+                    # Create the gamer role if it doesn't exist
+                    gamer_role = await ctx.guild.create_role(
+                        name="gamer",
+                        color=discord.Color.green(),
+                        reason="Auto-created gamer role"
+                    )
+                    logger.info(f"Created gamer role in {ctx.guild.name}")
+                
+                # Check if user already has the role
+                if gamer_role in ctx.author.roles:
+                    await ctx.send("✅ You already have the gamer role!")
+                    return
+                
+                # Assign the role
+                await ctx.author.add_roles(gamer_role)
+                
+                embed = discord.Embed(
+                    title="🎮 Role Assigned",
+                    description=f"Successfully assigned gamer role to {ctx.author.mention}",
+                    color=0x00ff00
+                )
+                
+                await ctx.send(embed=embed)
+                
             except Exception as e:
                 logger.error(f"Error in assign command: {e}")
-                await ctx.send("❌ Error assigning role")
+                await ctx.send("❌ An error occurred while assigning role.")
         
         @self.command(name="remove")
         async def remove_role(ctx):
-            """Remove a role from the user."""
+            """Remove gamer role from user."""
             try:
-                role_name = "gamer"  # Change this to your role name
-                role = discord.utils.get(ctx.guild.roles, name=role_name)
+                gamer_role = discord.utils.get(ctx.guild.roles, name="gamer")
                 
-                if role:
-                    await ctx.author.remove_roles(role)
-                    await ctx.send(f"{ctx.author.mention} has had the {role_name} role removed")
-                else:
-                    await ctx.send("Role doesn't exist")
-                    
+                if not gamer_role:
+                    await ctx.send("❌ Gamer role doesn't exist.")
+                    return
+                
+                if gamer_role not in ctx.author.roles:
+                    await ctx.send("❌ You don't have the gamer role.")
+                    return
+                
+                # Remove the role
+                await ctx.author.remove_roles(gamer_role)
+                
+                embed = discord.Embed(
+                    title="🎮 Role Removed",
+                    description=f"Successfully removed gamer role from {ctx.author.mention}",
+                    color=0xff0000
+                )
+                
+                await ctx.send(embed=embed)
+                
             except Exception as e:
                 logger.error(f"Error in remove command: {e}")
-                await ctx.send("❌ Error removing role")
+                await ctx.send("❌ An error occurred while removing role.")
         
         @self.command(name="secret")
         @commands.has_role("gamer")  # Requires the gamer role
         async def secret_command(ctx):
-            """Secret command that requires the gamer role."""
-            await ctx.send("Welcome to the club! 🎉")
+            """Secret command for gamers only."""
+            await ctx.send("🎮 You found the secret command! This is only for gamers.")
         
         @secret_command.error
         async def secret_error(ctx, error):
-            """Handle errors for the secret command."""
             if isinstance(error, commands.MissingRole):
-                await ctx.send("You do not have permission to do that!")
+                await ctx.send("❌ You need the gamer role to use this command!")
             else:
-                await ctx.send("❌ An error occurred")
+                await ctx.send("❌ An error occurred with the secret command.")
         
         @self.command(name="dm")
         async def send_dm(ctx, *, message):
-            """Send a DM to the user."""
+            """Send a DM to the bot owner."""
             try:
-                await ctx.author.send(f"You said: {message}")
-                await ctx.send("✅ DM sent!")
+                owner = self.get_user(self.owner_id)
+                if owner:
+                    await owner.send(f"DM from {ctx.author}: {message}")
+                    await ctx.send("✅ Message sent to bot owner.")
+                else:
+                    await ctx.send("❌ Could not find bot owner.")
             except Exception as e:
                 logger.error(f"Error in dm command: {e}")
-                await ctx.send("❌ Error sending DM")
+                await ctx.send("❌ An error occurred while sending DM.")
         
         @self.command(name="reply")
         async def reply_to_message(ctx):
-            """Reply to the user's message."""
+            """Reply to the last message in the channel."""
             try:
-                await ctx.reply("This is a reply to your message!")
+                messages = await ctx.channel.history(limit=2).flatten()
+                if len(messages) > 1:
+                    last_message = messages[1]  # Skip the command message
+                    await ctx.send(f"Replying to: {last_message.content}")
+                else:
+                    await ctx.send("❌ No previous message to reply to.")
             except Exception as e:
                 logger.error(f"Error in reply command: {e}")
-                await ctx.send("❌ Error replying to message")
+                await ctx.send("❌ An error occurred while replying.")
         
         @self.command(name="poll")
         async def create_poll(ctx, *, question):
             """Create a poll with reactions."""
             try:
                 embed = discord.Embed(
-                    title="📊 New Poll",
+                    title="📊 Poll",
                     description=question,
-                    color=0x00ff00
+                    color=0x0099ff
                 )
+                embed.set_footer(text=f"Poll created by {ctx.author.name}")
                 
                 poll_message = await ctx.send(embed=embed)
                 
-                # Add reactions
-                await poll_message.add_reaction("👍")
-                await poll_message.add_reaction("👎")
+                # Add reaction options
+                reactions = ["👍", "👎", "🤷"]
+                for reaction in reactions:
+                    await poll_message.add_reaction(reaction)
                 
             except Exception as e:
                 logger.error(f"Error in poll command: {e}")
-                await ctx.send("❌ Error creating poll")
+                await ctx.send("❌ An error occurred while creating poll.")
     
     async def on_ready(self):
-        """Called when the bot is ready and connected to Discord."""
+        """Called when the bot is ready."""
         try:
-            logger.info(f"Logged in as {self.user.name}")
+            logger.info(f"✅ Bot is ready! Logged in as {self.user}")
             logger.info(f"Bot ID: {self.user.id}")
+            logger.info(f"Connected to {len(self.guilds)} guilds")
             
-            # Set bot status
-            await self.change_presence(activity=discord.Game(name="Surveys | !help"))
+            # Store channel references
+            for guild in self.guilds:
+                for channel in guild.channels:
+                    if isinstance(channel, discord.TextChannel):
+                        self.channels[channel.name] = channel
             
             # Load slash commands
             await self.load_slash_commands()
             
-            # Send system status notification
-            self.webhook_manager.send_system_status(
-                "online", 
-                "Survey Bot is now online and ready to process surveys!",
-                {
-                    "Bot Name": self.user.name,
-                    "Bot ID": self.user.id,
-                    "Servers": len(self.guilds)
-                }
+            # Start background tasks
+            asyncio.create_task(self.background_tasks())
+            
+            # Set bot status
+            await self.change_presence(
+                activity=discord.Activity(
+                    type=discord.ActivityType.watching,
+                    name="for surveys | /help"
+                )
             )
+            
+            logger.info("Bot setup completed successfully")
             
         except Exception as e:
             logger.error(f"Error in on_ready: {e}")
-            self.webhook_manager.send_error_report("Startup Error", str(e))
     
     async def on_message(self, message):
         """Handle incoming messages."""
         try:
-            # Don't respond to our own messages
+            # Ignore bot messages
             if message.author == self.user:
-                return
-            
-            # Swear word filter (like in the tutorial)
-            bad_words = ["badword", "swear", "curse"]  # Add your list of words
-            if any(word in message.content.lower() for word in bad_words):
-                await message.delete()
-                await message.channel.send(f"{message.author.mention} Don't use that word!")
                 return
             
             # Process commands
@@ -567,8 +537,11 @@ class SurveyBot(commands.Bot):
             
             # Also sync to each guild for immediate availability
             for guild in self.guilds:
-                await self.tree.sync(guild=guild)
-                logger.info(f"✅ Commands synced to guild: {guild.name}")
+                try:
+                    await self.tree.sync(guild=guild)
+                    logger.info(f"✅ Commands synced to guild: {guild.name}")
+                except Exception as e:
+                    logger.warning(f"Failed to sync commands to guild {guild.name}: {e}")
             
             logger.info("✅ Slash commands loaded and synced successfully")
             
