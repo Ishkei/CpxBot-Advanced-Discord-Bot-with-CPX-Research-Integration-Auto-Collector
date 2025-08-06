@@ -1,0 +1,229 @@
+{
+  "about_you": {
+    "full_name": "Tressach Bekele",
+    "email": "lf7gk70m@tressachbekele.anonaddy.com",
+    "date_of_birth": "1991-08-15",
+    "age": 33,
+    "gender": "Male",
+    "state": "California",
+    "city": "Los Angeles",
+    "zipcode": "90001",
+    "ethnicity": "White / Caucasian",
+    "religion": "Agnostic",
+    "hispanic_origin": "No, not of Hispanic, Latino, or Spanish origin",
+    "has_children": true,
+    "has_smartphone": true,
+    "smartphone_use": "both",
+    "living_situation": "Homeowner"
+  },
+  "work": {
+    "employment_status": "Employed full-time (35+ hours/week)",
+    "employment_contract": "Permanent/Salaried employee",
+    "company_industry": "Technology / Information Technology",
+    "company_revenue_range": "$100 Million to $249.99 Million",
+    "company_employee_range": "500-999 employees",
+    "company_department": "IT / Information Systems",
+    "job_title": "Senior Program Manager",
+    "personal_income_before_taxes": "$150,000 - $199,999",
+    "work_product_purchasing_authority": "Have final say for purchasing decisions",
+    "company_size": "501-1000",
+    "industry": "Information Technology/IT",
+    "company_revenue": "$100 Million - $249.99 Million"
+  },
+  "technology": {
+    "smartphone_ownership": "Yes, I own a smartphone",
+    "primary_mobile_carrier": "AT&T",
+    "smartphone_brand": "Apple",
+    "smartphone_model": "iPhone 14 Pro Max",
+    "smartphone_operating_system": "iOS",
+    "smartphone_operating_system_version": "iOS 16.6",
+    "smartphone_screen_size": "6.7 inches",
+    "smartphone_screen_resolution": "2796 x 1290 pixels",
+    "smartphone_screen_technology": "OLED",
+    "smartphone_screen_type": "AMOLED",
+    "smartphone_screen_protection": "Scratch-resistant glass",
+    "smartphone_screen_protection_type": "Shatterproof",
+    "smartphone_screen_protection_type_details": "Shatterproof glass",
+    "smartphone_screen_protection_type_details_details": "Shatterproof glass",
+    "smartphone_screen_protection_type_details_details_details": "Shatterproof glass",
+    "owned_electronic_products": ["Smartphone", "Laptop", "Tablet", "Smart TV", "Smart Speaker", "Wireless Router"],
+    "early_adopter_of_technology": "Yes, I am usually one of the first to try new technology",
+    "primary_home_internet_provider": "Charter/Spectrum",
+    "home_internet_connection_type": "Fiber Optic",
+    "computer_online_frequency": "Several times a day",
+    "social_media_access_frequency": "Multiple times per day",
+    "mobile_phone_plan_type": "Post-paid / Contract plan"
+  },
+  "gaming": {
+    "plays_video_games": "Yes",
+    "gaming_devices_used": ["PC/Laptop", "Sony PlayStation 5"],
+    "weekly_gaming_hours": "5-10 hours",
+    "game_genres_played": ["Action/RPG", "Strategy", "Puzzle"],
+    "online_gaming_habits": "Play with others through an Internet connection",
+    "gaming_platforms_used": ["Steam", "PlayStation Network"],
+    "online_multiplayer_gaming": "Yes, frequently"
+  },
+  "health": {
+    "smoking_status": "Never smoked",
+    "daily_cigarette_consumption": "None",
+    "smoking_cessation_methods_used": "N/A",
+    "glasses_or_contacts_usage": "Wear eyeglasses",
+    "hearing_aid_usage": "No",
+    "personal_diagnosed_illnesses": ["Astigmatism", "Migraine"],
+    "household_diagnosed_illnesses": ["None"],
+    "diagnosed_ailments_self_or_care_recipient": ["Neurologic / Nervous Conditions (Migraines)"],
+    "neurologic_nervous_conditions_self_care": ["Migraines"],
+    "autoimmune_blood_conditions_self_care": ["None"],
+    "pain_conditions_self_care": ["Migraine-related Headaches"],
+    "arthritis_joint_ailments_self_care": ["None"],
+    "mental_health_conditions_self_care": ["None"],
+    "diabetes_thyroid_obesity_conditions_self_care": ["None"],
+    "vision_hearing_impairments_self_care": ["Vision impairment (Astigmatism)"],
+    "allergy_asthma_respiratory_conditions_self_care": ["None"],
+    "sleep_disorders_self_care": ["None"],
+    "dental_conditions_self_care": ["None"],
+    "gastric_digestive_urinary_conditions_self_care": ["None"],
+    "male_female_health_conditions_self_care": ["None"],
+    "cardiovascular_heart_conditions_self_care": ["None"],
+    "skin_dermatologic_conditions_self_care": ["None"],
+    "cancer_conditions_self_care": ["None"],
+    "addiction_conditions_self_care": ["None"]
+  },
+  "shopping": {
+    "daily_purchasing_decision_maker": "I am the primary decision maker",
+    "grocery_purchase_decision_maker": "I share the responsibility",
+    "recent_or_intended_purchases": ["New smartphone", "Laptop", "Vacation package"],
+    "recent_grocery_purchases": ["Organic produce", "Craft beer", "Artisanal cheese"]
+  },
+  "food_and_drinks": {
+    "alcohol_consumption": "1 to 3 drinks per week",
+    "beverage_choices": ["Coffee", "White wine", "Tea", "Bottled water still"],
+    "fast_food_preferences": ["In-N-Out Burger", "Subway", "Taco Bell"]
+  },
+  "leisure": {
+    "hobbies_and_interests": ["Technology", "Travel", "Cooking", "Health and fitness", "Reading"],
+    "sports_participation": ["Jogging", "Swimming"],
+    "weekly_exercise_hours": "3-5 hours",
+    "weekly_tv_hours": "5-10 hours",
+    "weekly_radio_hours": "1-3 hours",
+    "gambling_participation": "Rarely, if ever",
+    "publications_read": ["TechCrunch", "The Economist", "Food & Wine Magazine"]
+  },
+  "automotive": {
+    "car_ownership": "Yes",
+    "vehicle_type": "Hybrid (e.g., Toyota Prius)",
+    "vehicle_condition": "New",
+    "vehicle_year": "2021",
+    "household_purchase_influence": "I contribute equally in automotive decisions",
+    "future_purchase_plan": "5+ Years from now",
+    "motorcycle_ownership": "No"
+  },
+  "media": {
+    "movie_theatre_frequency": "Once a month",
+    "movie_genres_watched": ["Science Fiction", "Comedy", "Thriller"],
+    "home_movie_download_access": "Yes, through subscription services",
+    "home_movie_rental_download_frequency": "2-3 times per month"
+  },
+  "home": {
+    "marital_status": "Married",
+    "children": "1",
+    "children_details": [
+      {
+        "name": "Child 1",
+        "date_of_birth": "2018-03-15",
+        "gender": "Male",
+        "age": 6
+      },
+      {
+        
+      }
+    ],
+    "household_size": "3",
+    "living_situation": "Own a single-family home",
+    "home_value": "$400,000 - $499,999",
+    "household_income": "$150,000 - $199,999",
+    "household_income_range": "$150,000 - $199,999",
+    "household_investable_assets": "$100,000 - $249,999",
+    "pets_in_household": ["Dog"],
+    "household_decision_responsibilities": ["Financial planning", "Home maintenance", "Technology purchases"],
+    "household_decision_responsibilities_details": [
+      {
+        "name": "Financial planning",
+        "description": "I am the primary decision maker for financial planning"
+      }
+    ]
+  },
+  "travel": {
+    "flown_in_last_12_months": "Yes, 2-3 times",
+    "air_travel_purpose": ["Business", "Leisure"],
+    "flight_types_taken": ["Domestic", "International"],
+    "international_airlines_flown": ["British Airways"],
+    "domestic_airlines_flown": ["Delta", "United"],
+    "travel_decision_role": "I make the final decision",
+    "countries_visited_last_12_months": ["United Kingdom"],
+    "hotels_stayed_at_last_12_months": ["Marriott", "Hilton"]
+  },
+  "other_demographics": {
+    "political_affiliation": "Lean Democrat",
+    "owned_financial_products": ["Checking Account", "Savings Account", "Credit Card", "Stocks/Shares", "401(k) or similar retirement plan"],
+    "registered_to_vote": "Yes",
+    "fast_food_restaurants_visited": ["In-N-Out Burger", "Subway", "Taco Bell"]
+  },
+  "survey_behavior": {
+    "satisfaction_with_life": "Very satisfied",
+    "importance_of_family": "Extremely important",
+    "community_involvement": "Moderately involved",
+    "environmental_concern": "High concern for environmental issues",
+    "technology_influence_on_life": "Significant positive influence",
+    "preferred_shopping_method": "Online shopping",
+    "favorite_brands": ["Apple", "Nike", "Samsung"],
+    "preferred_payment_method": "Credit card",
+    "interest_in_loyalty_programs": "Yes, I actively participate in loyalty programs",
+    "career_goals": "Advance to Director level in the next 5 years",
+    "personal_goals": "Travel to at least 3 new countries in the next year",
+    "financial_goals": "Increase investable assets to $500,000 within 5 years",
+    "product_feedback_general": "I appreciate products that are user-friendly and integrate well with other devices.",
+    "service_feedback_general": "Customer service should be responsive and knowledgeable.",
+    "website_experience_general": "I prefer websites that are easy to navigate and mobile-friendly.",
+    "preferred_contact_method": "Email",
+    "frequency_of_communication": "Weekly updates",
+    "interest_in_newsletters": "Yes, I subscribe to newsletters from brands I like",
+    "data_privacy_concern": "High concern for data privacy",
+    "use_of_two_factor_authentication": "Yes, I use two-factor authentication for important accounts",
+    "password_management": "I use a password manager to keep my passwords secure",
+    "sharing_personal_information": "I am cautious about sharing personal information online"
+  },
+  "survey_participation": {
+    "participation_frequency": "Occasionally, when topics interest me",
+    "preferred_survey_length": "Short surveys (5-10 minutes)",
+    "incentives_for_participation": "Cash or gift cards",
+    "feedback_on_surveys": "I value surveys that are clear, concise, and respect my time."
+  },
+  "survey_opt_in": {
+    "opt_in_status": "Yes, I agree to participate in surveys and provide feedback",
+    "preferred_survey_topics": ["Technology", "Travel", "Health and Fitness", "Consumer Electronics"],
+    "contact_preferences": {
+      "email": true,
+      "phone": false,
+      "text_message": false
+    }
+  },
+  "data_privacy": {
+    "data_collection_agreement": "I agree to the collection and use of my data as described in the privacy policy.",
+    "data_sharing_preferences": {
+      "share_with_third_parties": false,
+      "share_with_marketing_partners": false,
+      "share_with_research_organizations": false
+    },
+    "data_access_rights": "I understand that I have the right to access, correct, or delete my personal data at any time.",
+    "data_security_measures": "I acknowledge that appropriate security measures are in place to protect my personal data.",
+    "data_retention_policy": "I understand that my data will be retained only as long as necessary for the purposes outlined in the privacy policy.",
+    "data_breach_notification": "I will be notified in the event of a data breach that affects my personal information.",
+    "cookies_policy": "I consent to the use of cookies and similar technologies to enhance my experience on the website.",
+    "tracking_technologies": "I understand that tracking technologies may be used to collect data about my interactions with the website.",
+    "opt_out_options": "I have the option to opt out of non-essential data collection and tracking at any time.",
+    "contact_information_for_data_privacy": {
+      "email": "lf7gk70m@tressachbekele.anonaddy.com"
+    }
+  }
+}

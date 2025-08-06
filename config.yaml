@@ -1,0 +1,171 @@
+# Survey Bot Configuration
+
+# Discord Bot Configuration
+discord:
+  token: ${DISCORD_TOKEN}
+  guild_id: ${DISCORD_GUILD_ID}
+  prefix: "!"
+  intents:
+    - message_content
+    - guilds
+    - guild_messages
+    - guild_reactions
+    - guild_members
+
+# Channel Configuration
+channels:
+  airdrops: "airdrops"
+  mines: "mines"
+  lakes: "lakes"
+  alley: "alley"
+  stash: "stash"
+  nexus: "nexus"
+  arena: "arena"
+  shop: "shop"
+  bank: "bank"
+
+# CPX Research Configuration
+cpx_research:
+  base_url: "https://offers.cpx-research.com/index.php"
+  app_id: "27806"
+  ext_user_id: "533055960609193994_1246050346233757798"
+  secure_hash: "49069f12991d2283f61a52dc967dff9f"
+  username: ${CPX_USERNAME}
+  password: ${CPX_PASSWORD}
+  
+  # Survey Completion Settings
+  survey_settings:
+    min_earnings: 0.10  # Minimum earnings to accept survey
+    max_time: 30        # Maximum time in minutes
+    auto_accept: true   # Automatically accept surveys
+    random_delays: true # Add random delays to appear human
+    
+  # Survey Types to Target
+  survey_types:
+    - "gaming"
+    - "technology"
+    - "entertainment"
+    - "sports"
+    - "shopping"
+    - "general"
+
+# Web Scraping Configuration
+web_scraper:
+  user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+  timeout: 30
+  retry_attempts: 3
+  headless: true
+  window_size:
+    width: 1920
+    height: 1080
+
+# Database Configuration
+database:
+  url: "sqlite:///data/survey_bot.db"
+  backup_interval: 24  # hours
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  file: "logs/survey_bot.log"
+  max_size: "10MB"
+  backup_count: 5
+
+# Auto-Collection Settings (Enhanced with GitHub Issue Features)
+auto_collection:
+  enabled: true
+  tip_cc_integration: true
+  collection_interval: 300  # seconds
+  min_tip_amount: 0.01
+  
+  # Multi-accounting features (from GitHub issue)
+  multi_accounting: false
+  accounts: []  # List of Discord tokens for multiple accounts
+  
+  # Randomized CPM settings (from GitHub issue)
+  cpm_min: 200  # Minimum CPM for randomized typing speed
+  cpm_max: 400  # Maximum CPM for randomized typing speed
+  
+  # Channel filtering (from GitHub issue)
+  channel_whitelist: []  # Only collect from these channels
+  channel_blacklist: ["botcheck", "test", "spam"]  # Never collect from these channels
+  
+  # Drop filtering (from GitHub issue)
+  ignore_drops_under: 0.50  # Ignore drops under this amount
+  ignore_thresholds: ["0.10:50", "0.25:25", "0.50:10"]  # threshold:chance_to_ignore
+  
+  # Smart delay settings (from GitHub issue)
+  smart_delay_enabled: true
+  smart_delay_types: ["airdrop", "phrasedrop", "mathdrop"]  # Apply smart delay to these types
+  
+  # Cooldown settings (from GitHub issue)
+  cooldown_minutes: 3  # Minutes to wait after claiming a drop
+  
+  # Thank you messages (from GitHub issue)
+  thank_you_messages:
+    - "Thank you!"
+    - "Thanks!"
+    - "Appreciate it!"
+    - "Much appreciated!"
+    - "Thank you so much!"
+    - "Thanks for the tip!"
+    - "You're awesome!"
+    - "Much love!"
+
+# Discord Commands Integration
+discord_commands:
+  # Tip.cc Auto-collector Integration
+  tip_cc:
+    enabled: true
+    webhook_url: ${TIP_CC_WEBHOOK_URL}
+    
+  # Survey Commands
+  survey_commands:
+    - "survey"
+    - "earnings"
+    - "status"
+    - "withdraw"
+    
+  # Gaming Commands (from the Discord server)
+  gaming_commands:
+    - "setup"
+    - "profile"
+    - "mine"
+    - "fish"
+    - "rob"
+    - "open"
+    - "refine"
+    - "learn"
+    - "craft"
+    - "blow-up"
+    - "enchant"
+    - "shop"
+    - "sell"
+    - "offers"
+    - "withdraw"
+    - "pet"
+    - "feed"
+    - "switch"
+    - "battle"
+    - "tip"
+    - "rain"
+    - "magic-storm"
+    - "invites"
+    - "leaderboards"
+    - "codex"
+    - "emoji"
+    - "flex"
+    - "pings"
+
+# Security Settings
+security:
+  rate_limiting: true
+  max_requests_per_minute: 60
+  ip_rotation: false
+  proxy_enabled: false
+
+# Notification Settings
+notifications:
+  discord_webhook: ${DISCORD_WEBHOOK_URL}
+  email_notifications: false
+  earnings_threshold: 1.00  # Notify when earnings reach this amount

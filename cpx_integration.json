@@ -1,0 +1,12 @@
+{
+  "discord_server": "https://discord.gg/VXKfzW4B",
+  "cpx_url": "https://offers.cpx-research.com/index.php?app_id=27806&ext_user_id=533055960609193994_1246050346233757798",
+  "user_id": "533055960609193994",
+  "setup_required": true,
+  "commands": {
+    "setup": "/setup - Create your character",
+    "offers": "/offers - Access CPX Research surveys",
+    "withdraw": "/withdraw - Withdraw earnings",
+    "cpx_status": "/cpx_status - Check CPX configuration"
+  }
+}

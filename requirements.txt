@@ -1,0 +1,31 @@
+# Discord Bot Dependencies
+discord.py>=2.3.0
+python-dotenv>=1.0.0
+
+# Web Scraping and Automation
+selenium>=4.15.0
+webdriver-manager>=4.0.0
+beautifulsoup4>=4.12.0
+requests>=2.31.0
+lxml>=4.9.0
+
+# Data Processing
+pandas>=2.1.0
+numpy>=1.24.0
+
+# Configuration and Utilities
+pyyaml>=6.0
+schedule>=1.2.0
+python-dateutil>=2.8.0
+
+# Logging and Monitoring
+loguru>=0.7.0
+
+# Async Support
+aiohttp>=3.8.0
+
+# Image Processing (for OCR if needed)
+Pillow>=10.0.0
+
+# Environment Management
+python-dotenv>=1.0.0 
