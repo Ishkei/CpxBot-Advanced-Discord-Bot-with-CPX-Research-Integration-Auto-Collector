@@ -10,7 +10,7 @@ from typing import Dict, List, Any, Optional
 from loguru import logger
 from datetime import datetime, timedelta
 
-from web_scraper.cpx_scraper import CPXScraper
+from src.web_scraper.cpx_scraper import CPXScraper
 
 
 class SurveyHandler:
@@ -45,6 +45,15 @@ class SurveyHandler:
             if self.is_running:
                 logger.info("Survey handler already running, skipping check")
                 return
+            
+            # Check if scraper is initialized
+            if self.scraper is None:
+                logger.warning("Survey handler not initialized, attempting to initialize...")
+                try:
+                    await self.initialize()
+                except Exception as e:
+                    logger.error(f"Failed to initialize survey handler: {e}")
+                    return
             
             # Get available surveys
             surveys = await self.scraper.get_available_surveys()
@@ -91,6 +100,17 @@ class SurveyHandler:
                 "status": "in_progress"
             })
             
+            # Check if scraper is initialized
+            if self.scraper is None:
+                logger.warning("Survey handler not initialized, attempting to initialize...")
+                try:
+                    await self.initialize()
+                except Exception as e:
+                    logger.error(f"Failed to initialize survey handler: {e}")
+                    self.is_running = False
+                    self.current_survey = None
+                    return False
+            
             # Complete the survey
             result = await self.scraper.complete_survey(survey_data)
             
@@ -135,6 +155,15 @@ class SurveyHandler:
             Survey data if started successfully, None otherwise
         """
         try:
+            # Check if scraper is initialized
+            if self.scraper is None:
+                logger.warning("Survey handler not initialized, attempting to initialize...")
+                try:
+                    await self.initialize()
+                except Exception as e:
+                    logger.error(f"Failed to initialize survey handler: {e}")
+                    return None
+            
             surveys = await self.scraper.get_available_surveys()
             
             if not surveys:
@@ -201,6 +230,15 @@ class SurveyHandler:
             List of survey dictionaries
         """
         try:
+            # Check if scraper is initialized
+            if self.scraper is None:
+                logger.warning("Survey handler not initialized, attempting to initialize...")
+                try:
+                    await self.initialize()
+                except Exception as e:
+                    logger.error(f"Failed to initialize survey handler: {e}")
+                    return []
+            
             return await self.scraper.get_available_surveys()
         except Exception as e:
             logger.error(f"Error getting available surveys: {e}")

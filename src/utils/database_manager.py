@@ -88,18 +88,7 @@ class DatabaseManager:
                 )
             ''')
             
-            # Auto-collector logs
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS auto_collector_logs (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    collection_time TIMESTAMP,
-                    amount_collected REAL,
-                    tips_found INTEGER,
-                    status TEXT,
-                    error_message TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
+
             
             conn.commit()
             logger.info("Database tables created successfully")
@@ -348,59 +337,7 @@ class DatabaseManager:
             logger.error(f"Error getting bot stat: {e}")
             return None
     
-    async def add_auto_collector_log(self, amount_collected: float, tips_found: int, status: str, error_message: str = None):
-        """Add an auto-collector log entry.
-        
-        Args:
-            amount_collected: Amount collected
-            tips_found: Number of tips found
-            status: Status of the collection
-            error_message: Error message if any
-        """
-        try:
-            conn = await self._get_connection()
-            cursor = conn.cursor()
-            cursor.execute('''
-                INSERT INTO auto_collector_logs 
-                (collection_time, amount_collected, tips_found, status, error_message)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (datetime.now(), amount_collected, tips_found, status, error_message))
-            conn.commit()
-        except Exception as e:
-            logger.error(f"Error adding auto-collector log: {e}")
-    
-    async def get_auto_collector_stats(self) -> Dict[str, Any]:
-        """Get auto-collector statistics.
-        
-        Returns:
-            Dictionary with auto-collector statistics
-        """
-        try:
-            conn = await self._get_connection()
-            cursor = conn.cursor()
-            
-            # Get total collected
-            cursor.execute('''
-                SELECT SUM(amount_collected) as total, COUNT(*) as collections
-                FROM auto_collector_logs WHERE status = 'success'
-            ''')
-            stats = cursor.fetchone()
-            
-            # Get last collection
-            cursor.execute('''
-                SELECT collection_time FROM auto_collector_logs 
-                WHERE status = 'success' ORDER BY collection_time DESC LIMIT 1
-            ''')
-            last_collection = cursor.fetchone()
-            
-            return {
-                'total_collected': stats['total'] or 0.0,
-                'total_collections': stats['collections'] or 0,
-                'last_collection': last_collection['collection_time'] if last_collection else None
-            }
-        except Exception as e:
-            logger.error(f"Error getting auto-collector stats: {e}")
-            return {'total_collected': 0.0, 'total_collections': 0, 'last_collection': None}
+
     
     async def close(self):
         """Close the database connection."""

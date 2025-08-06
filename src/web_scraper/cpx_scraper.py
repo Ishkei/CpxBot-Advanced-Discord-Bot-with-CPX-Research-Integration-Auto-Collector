@@ -13,9 +13,9 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.firefox.options import Options
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from webdriver_manager.chrome import ChromeDriverManager
+from webdriver_manager.firefox import GeckoDriverManager
 from bs4 import BeautifulSoup
 import requests
 
@@ -48,33 +48,40 @@ class CPXScraper:
         })
     
     async def initialize_driver(self):
-        """Initialize the Chrome WebDriver."""
+        """Initialize the Firefox WebDriver."""
         try:
-            chrome_options = Options()
+            firefox_options = Options()
             
             if self.config["web_scraper"]["headless"]:
-                chrome_options.add_argument("--headless")
+                firefox_options.add_argument("--headless")
             
-            chrome_options.add_argument("--no-sandbox")
-            chrome_options.add_argument("--disable-dev-shm-usage")
-            chrome_options.add_argument("--disable-gpu")
-            chrome_options.add_argument("--window-size=1920,1080")
-            chrome_options.add_argument(f"--user-agent={self.config['web_scraper']['user_agent']}")
+            # Set user agent
+            firefox_options.set_preference("general.useragent.override", self.config['web_scraper']['user_agent'])
             
-            # Add additional options for stealth
-            chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-            chrome_options.add_experimental_option('useAutomationExtension', False)
+            # Disable images for faster loading
+            firefox_options.set_preference("permissions.default.image", 2)
+            
+            # Disable notifications
+            firefox_options.set_preference("dom.webnotifications.enabled", False)
+            
+            # Disable geolocation
+            firefox_options.set_preference("geo.enabled", False)
+            
+            # Set window size
+            firefox_options.add_argument("--width=1920")
+            firefox_options.add_argument("--height=1080")
             
             # Initialize driver
-            self.driver = webdriver.Chrome(
-                service=webdriver.chrome.service.Service(ChromeDriverManager().install()),
-                options=chrome_options
+            from selenium.webdriver.firefox.service import Service
+            self.driver = webdriver.Firefox(
+                service=Service(GeckoDriverManager().install()),
+                options=firefox_options
             )
             
-            # Execute stealth script
-            self.driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+            # Set implicit wait
+            self.driver.implicitly_wait(5)
             
-            logger.info("Chrome WebDriver initialized successfully")
+            logger.info("Firefox WebDriver initialized successfully")
             
         except Exception as e:
             logger.error(f"Error initializing WebDriver: {e}")

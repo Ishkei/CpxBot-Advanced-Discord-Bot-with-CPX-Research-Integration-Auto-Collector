@@ -82,7 +82,7 @@ CPX_PASSWORD=your_cpx_password_here
 GOOGLE_API_KEY=your_google_api_key_here
 
 # Optional: Tip.cc Integration
-TIP_CC_WEBHOOK_URL=your_tip_cc_webhook_url_here
+
 
 # Optional: Discord Webhook for notifications
 DISCORD_WEBHOOK_URL=your_discord_webhook_url_here

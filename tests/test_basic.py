@@ -62,7 +62,7 @@ def test_imports():
         from discord_bot.bot import SurveyBot
         from utils.config_manager import ConfigManager
         from utils.database_manager import DatabaseManager
-        from web_scraper.cpx_scraper import CPXScraper
+        from src.web_scraper.cpx_scraper import CPXScraper
         
         print("✅ Import test passed")
         return True

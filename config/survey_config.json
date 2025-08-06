@@ -1,0 +1,100 @@
+{
+  "surveys": [
+    {
+      "name": "Sample Survey",
+      "url": "https://www.example-survey-site.com/survey",
+      "description": "A sample survey for testing automation",
+      "login": {
+        "username_field": "username",
+        "password_field": "password",
+        "username": "test_user",
+        "password": "test_password",
+        "submit_button": "login-button"
+      },
+      "demographics": {
+        "name": "John Doe",
+        "email": "john.doe@example.com",
+        "age": "25",
+        "gender": "Male"
+      },
+      "questions": [
+        {
+          "type": "text",
+          "selector": "name-field",
+          "answer": "John Doe",
+          "description": "Enter your name"
+        },
+        {
+          "type": "text",
+          "selector": "email-field",
+          "answer": "john.doe@example.com",
+          "description": "Enter your email"
+        },
+        {
+          "type": "dropdown",
+          "selector": "age-range",
+          "option": "25-34",
+          "description": "Select your age range"
+        },
+        {
+          "type": "multiple_choice",
+          "selector": "gender-options",
+          "answer_index": 0,
+          "description": "Select your gender"
+        },
+        {
+          "type": "scale",
+          "selector": "satisfaction-scale",
+          "rating": 8,
+          "description": "Rate your satisfaction (1-10)"
+        },
+        {
+          "type": "text",
+          "selector": "feedback-textarea",
+          "answer": "This is a great survey platform!",
+          "description": "Provide feedback"
+        }
+      ],
+      "submit_button": "submit-survey"
+    },
+    {
+      "name": "CPX Research Survey",
+      "url": "https://www.cpx-research.com/survey",
+      "description": "CPX Research survey automation",
+      "login": {
+        "username_field": "email",
+        "password_field": "password",
+        "username": "your_cpx_email@example.com",
+        "password": "your_cpx_password",
+        "submit_button": "signin-button"
+      },
+      "questions": [
+        {
+          "type": "multiple_choice",
+          "selector": "product-interest",
+          "answer_index": 2,
+          "description": "What products are you interested in?"
+        },
+        {
+          "type": "scale",
+          "selector": "purchase-likelihood",
+          "rating": 7,
+          "description": "How likely are you to purchase?"
+        },
+        {
+          "type": "text",
+          "selector": "comments",
+          "answer": "I find this product interesting and would consider purchasing it.",
+          "description": "Additional comments"
+        }
+      ],
+      "submit_button": "complete-survey"
+    }
+  ],
+  "settings": {
+    "default_wait_time": 3,
+    "random_delays": true,
+    "screenshot_on_completion": true,
+    "handle_captcha": true
+  }
+} 

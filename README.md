@@ -1,33 +1,31 @@
-# Survey Bot with Tip.cc Auto-collector Integration
+# Survey Bot with CPX Research Integration
 
-An advanced Discord bot that automates survey completion on CPX Research and integrates with tip.cc auto-collector functionality. This bot combines survey automation, gaming commands, and automatic tip collection in one comprehensive solution.
+An advanced Discord bot that automates survey completion on CPX Research. This bot combines survey automation with Discord integration for seamless survey management.
 
 ## 🌟 Features
 
 ### Core Features
 - **Survey Automation**: Automatically completes surveys on CPX Research website
 - **Discord Integration**: Responds to commands in Discord channels
-- **Multi-Channel Support**: Works across airdrops, mines, lakes, alley, stash, nexus, arena, shop, and bank channels
-- **Auto-Collection**: Integrates with tip.cc auto-collector functionality
 - **Web Scraping**: Intelligent survey detection and completion
 - **Data Management**: Tracks survey completion and earnings
+- **Firefox Automation**: Uses Firefox browser for survey completion
 
 ### Advanced Features
-- **Tip.cc Auto-collector**: Automatic collection of tips from Discord channels
 - **Smart Survey Selection**: Prioritizes surveys by earnings and completion rate
 - **Anti-Detection**: Human-like behavior simulation during survey completion
 - **Earnings Tracking**: Comprehensive tracking of all earnings and withdrawals
 - **Database Storage**: SQLite database for persistent data storage
 - **Logging System**: Detailed logging for monitoring and debugging
 
-### Gaming Commands
-The bot supports all standard Discord gaming commands including:
-- `/setup` - Character and pet management
-- `/mine`, `/fish`, `/rob` - Gathering activities
-- `/shop`, `/sell` - Trading
-- `/offers` - Survey completion
-- `/tip`, `/rain` - Tipping functionality
-- And many more...
+### Survey Commands
+The bot supports survey-related commands:
+- `!survey status` - Check current survey status
+- `!survey start` - Start a new survey
+- `!survey earnings` - Check current earnings
+- `!survey list` - List available surveys
+- `!earnings` - Quick earnings check
+- `!withdraw [amount]` - Withdraw earnings to tip.cc wallet
 
 ## 🚀 Quick Start
 
@@ -83,8 +81,8 @@ CPX_USERNAME=your_cpx_username_here
 CPX_PASSWORD=your_cpx_password_here
 CPX_URL=https://offers.cpx-research.com/index.php?app_id=27806&ext_user_id=533055960609193994_1246050346233757798&secure_hash=49069f12991d2283f61a52dc967dff9f&subid_1=&subid_2=&cpx_message_id=K05VejRYcUJsQUw2ZGFYOUkzaEc0bHJCU3BBOElJSEVoRzFJSForNUo1MD0=
 
-# Tip.cc Auto-collector Integration
-TIP_CC_WEBHOOK_URL=your_tip_cc_webhook_url_here
+# Discord Webhook (Optional)
+DISCORD_WEBHOOK_URL=your_discord_webhook_url_here
 
 # Database Configuration
 DATABASE_URL=sqlite:///data/survey_bot.db
@@ -140,40 +138,6 @@ MIN_TIP_AMOUNT=0.01
 - `!survey list` - List available surveys
 - `!earnings` - Quick earnings check
 - `!withdraw [amount]` - Withdraw earnings to tip.cc wallet
-
-### Gaming Commands
-- `!setup` - Character and pet management
-- `!profile [@user]` - View profile
-- `!mine` - Start mining
-- `!fish` - Start fishing
-- `!rob` - Start robbing
-- `!open [item]` - Open items
-- `!refine [material]` - Refine materials
-- `!learn [skill]` - Learn skills
-- `!craft [item]` - Craft items
-- `!shop` - View shop
-- `!sell [item]` - Sell items
-- `!offers` - View available offers
-- `!withdraw [amount]` - Withdraw to wallet
-- `!pet [@user]` - View pet
-- `!feed [food]` - Feed pet
-- `!battle [@user]` - Battle pets
-- `!tip @user amount` - Tip a user
-- `!rain [amount]` - Tip active members
-- `!magic-storm` - Summon magic storm
-- `!leaderboards [category]` - View leaderboards
-
-### Tip.cc Commands
-- `!tip @user amount` - Tip coins to a member
-- `!rain [amount]` - Tip coins to active members
-- `!balance` - Check tip.cc balance
-- `!withdraw [amount]` - Withdraw from tip.cc
-- `!auto-collect status` - Check auto-collector status
-- `!auto-collect enable` - Enable auto-collector
-- `!auto-collect disable` - Disable auto-collector
-- `!auto-collect settings` - View settings
-- `!collect` - Manually trigger tip collection
-- `!tip-stats` - View tip statistics
 
 ## 🔧 Auto-collector Features
 

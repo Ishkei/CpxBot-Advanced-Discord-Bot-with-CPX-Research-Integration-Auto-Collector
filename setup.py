@@ -68,7 +68,7 @@ CPX_PASSWORD=your_cpx_password_here
 CPX_URL=https://offers.cpx-research.com/index.php?app_id=27806&ext_user_id=533055960609193994_1246050346233757798&secure_hash=49069f12991d2283f61a52dc967dff9f&subid_1=&subid_2=&cpx_message_id=K05VejRYcUJsQUw2ZGFYOUkzaEc0bHJCU3BBOElJSEVoRzFJSForNUo1MD0=
 
 # Tip.cc Auto-collector Integration
-TIP_CC_WEBHOOK_URL=your_tip_cc_webhook_url_here
+
 
 # Database Configuration
 DATABASE_URL=sqlite:///data/survey_bot.db
@@ -181,19 +181,8 @@ logging:
   max_size: "10MB"
   backup_count: 5
 
-# Auto-Collection Settings
-auto_collection:
-  enabled: true
-  tip_cc_integration: true
-  collection_interval: 300  # seconds
-  min_tip_amount: 0.01
-
 # Discord Commands Integration
 discord_commands:
-  # Tip.cc Auto-collector Integration
-  tip_cc:
-    enabled: true
-    webhook_url: ${TIP_CC_WEBHOOK_URL}
     
   # Survey Commands
   survey_commands:

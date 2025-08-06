@@ -10,7 +10,7 @@ from typing import Dict, List, Any, Optional
 from loguru import logger
 from datetime import datetime, timedelta
 
-from web_scraper.cpx_scraper import CPXScraper
+from src.web_scraper.cpx_scraper import CPXScraper
 
 
 class SurveyHandler:

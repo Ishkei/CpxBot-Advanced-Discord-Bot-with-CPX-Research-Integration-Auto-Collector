@@ -71,53 +71,10 @@ logging:
   max_size: "10MB"
   backup_count: 5
 
-# Auto-Collection Settings (Enhanced with GitHub Issue Features)
-auto_collection:
-  enabled: true
-  tip_cc_integration: true
-  collection_interval: 300  # seconds
-  min_tip_amount: 0.01
-  
-  # Multi-accounting features (from GitHub issue)
-  multi_accounting: false
-  accounts: []  # List of Discord tokens for multiple accounts
-  
-  # Randomized CPM settings (from GitHub issue)
-  cpm_min: 200  # Minimum CPM for randomized typing speed
-  cpm_max: 400  # Maximum CPM for randomized typing speed
-  
-  # Channel filtering (from GitHub issue)
-  channel_whitelist: []  # Only collect from these channels
-  channel_blacklist: ["botcheck", "test", "spam"]  # Never collect from these channels
-  
-  # Drop filtering (from GitHub issue)
-  ignore_drops_under: 0.50  # Ignore drops under this amount
-  ignore_thresholds: ["0.10:50", "0.25:25", "0.50:10"]  # threshold:chance_to_ignore
-  
-  # Smart delay settings (from GitHub issue)
-  smart_delay_enabled: true
-  smart_delay_types: ["airdrop", "phrasedrop", "mathdrop"]  # Apply smart delay to these types
-  
-  # Cooldown settings (from GitHub issue)
-  cooldown_minutes: 3  # Minutes to wait after claiming a drop
-  
-  # Thank you messages (from GitHub issue)
-  thank_you_messages:
-    - "Thank you!"
-    - "Thanks!"
-    - "Appreciate it!"
-    - "Much appreciated!"
-    - "Thank you so much!"
-    - "Thanks for the tip!"
-    - "You're awesome!"
-    - "Much love!"
+
 
 # Discord Commands Integration
 discord_commands:
-  # Tip.cc Auto-collector Integration
-  tip_cc:
-    enabled: true
-    webhook_url: ${TIP_CC_WEBHOOK_URL}
     
   # Survey Commands
   survey_commands:
