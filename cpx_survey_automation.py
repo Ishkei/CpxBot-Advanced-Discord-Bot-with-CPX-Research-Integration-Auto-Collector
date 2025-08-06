@@ -26,23 +26,19 @@ class CPXSurveyAutomation:
     Specialized automation for CPX Research surveys with hybrid vision/DOM approach.
     """
     
-    # Class attributes for default values
-    cpx_url = "https://offers.cpx-research.com/index.php"
-    user_id = "533055960609193994_1246050346233757798"
-    app_id = "27806"
-    
-    def __init__(self, headless: bool = False):
+    def __init__(self, user_id: str, app_id: str, headless: bool = False):
         """
         Initialize CPX survey automation.
         
         Args:
+            user_id: Your CPX Research user ID
+            app_id: Your CPX Research app ID
             headless: Whether to run in headless mode
         """
         self.browser = FirefoxAutomation(headless=headless)
-        # Use class attributes as instance attributes
-        self.cpx_url = self.cpx_url
-        self.user_id = self.user_id
-        self.app_id = self.app_id
+        self.cpx_url = "https://offers.cpx-research.com/index.php"
+        self.user_id = user_id
+        self.app_id = app_id
         
         # Load persona data
         self.persona = self.load_persona()
@@ -821,7 +817,7 @@ class CPXSurveyAutomation:
             logger.error(f"Enhanced next button clicking failed: {e}")
             return False
     
-    def handle_survey_page_hybrid(self) -> bool:
+    def handle_survey_page(self) -> bool:
         """
         Handle a single survey page using hybrid vision/DOM approach.
         
@@ -978,118 +974,6 @@ class CPXSurveyAutomation:
             logger.error(f"Error handling survey page: {e}")
         return False
     
-    def handle_survey_page(self) -> bool:
-        """
-        Handle a single survey page by detecting and answering questions.
-        
-        Returns:
-            bool: True if page handled successfully
-        """
-        try:
-            # Wait for questions to load
-            if not self.wait_for_survey_questions():
-                logger.warning("No questions found on this page")
-                return True  # Might be a completion page
-            
-            # Check for different question types and answer them
-            success = True
-            
-            # Handle radio buttons
-            radio_buttons = self.browser.driver.find_elements(By.CSS_SELECTOR, "input[type='radio']")
-            if radio_buttons:
-                logger.info(f"Found {len(radio_buttons)} radio buttons")
-                # Use persona-based radio button selection
-                if not self.answer_radio_question_with_persona():
-                    success = False
-            
-            # Handle checkboxes
-            checkboxes = self.browser.driver.find_elements(By.CSS_SELECTOR, "input[type='checkbox']")
-            if checkboxes:
-                logger.info(f"Found {len(checkboxes)} checkboxes")
-                # Select a random checkbox
-                checkbox_index = random.randint(0, min(len(checkboxes) - 1, 2))
-                if not self.answer_checkbox_question(checkbox_index):
-                    success = False
-            
-            # Handle text fields
-            text_fields = self.browser.driver.find_elements(By.CSS_SELECTOR, "input[type='text'], textarea")
-            if text_fields:
-                logger.info(f"Found {len(text_fields)} text fields")
-                
-                # Persona-based text responses
-                persona_texts = [
-                    self.get_random_persona_text("survey_behavior", "product_feedback_general", "I appreciate products that are user-friendly and integrate well with other devices."),
-                    self.get_random_persona_text("survey_behavior", "service_feedback_general", "Customer service should be responsive and knowledgeable."),
-                    self.get_random_persona_text("survey_behavior", "website_experience_general", "I prefer websites that are easy to navigate and mobile-friendly."),
-                    f"I'm {self.get_persona_value('about_you.full_name', 'a satisfied customer')} and I find this experience very positive.",
-                    self.get_random_persona_text("survey_behavior", "satisfaction_with_life", "Very satisfied with the overall experience.")
-                ]
-                
-                for i, field in enumerate(text_fields[:5]):  # Fill first 5 text fields
-                    try:
-                        field.clear()
-                        response_text = persona_texts[i % len(persona_texts)]
-                        field.send_keys(response_text)
-                        logger.info(f"Filled text field {i} with persona-based response")
-                    except Exception as e:
-                        logger.error(f"Failed to fill text field {i}: {e}")
-                        success = False
-            
-            # Handle dropdowns
-            selects = self.browser.driver.find_elements(By.CSS_SELECTOR, "select")
-            if selects:
-                logger.info(f"Found {len(selects)} dropdowns")
-                
-                # Persona-based dropdown options
-                persona_options = [
-                    self.get_persona_dropdown_option("about_you", "gender"),
-                    self.get_persona_dropdown_option("about_you", "state"),
-                    self.get_persona_dropdown_option("about_you", "ethnicity"),
-                    self.get_persona_dropdown_option("work", "employment_status"),
-                    self.get_persona_dropdown_option("home", "marital_status"),
-                    self.get_persona_dropdown_option("about_you", "age"),
-                    self.get_persona_dropdown_option("work", "personal_income_before_taxes"),
-                    self.get_persona_dropdown_option("home", "household_income")
-                ]
-                
-                for i, select in enumerate(selects):
-                    try:
-                        from selenium.webdriver.support.ui import Select
-                        select_obj = Select(select)
-                        if len(select_obj.options) > 1:
-                            # Try to match persona data first
-                            if i < len(persona_options) and persona_options[i]:
-                                # Look for matching option
-                                for option in select_obj.options:
-                                    if persona_options[i].lower() in option.text.lower():
-                                        select_obj.select_by_visible_text(option.text)
-                                        logger.info(f"Selected persona-based dropdown option: {option.text}")
-                                        break
-                                else:
-                                    # Fallback to random selection
-                            option_index = random.randint(1, len(select_obj.options) - 1)
-                            select_obj.select_by_index(option_index)
-                                    logger.info(f"Selected random dropdown option {option_index}")
-                            else:
-                                # Fallback to random selection
-                                option_index = random.randint(1, len(select_obj.options) - 1)
-                                select_obj.select_by_index(option_index)
-                                logger.info(f"Selected random dropdown option {option_index}")
-                    except Exception as e:
-                        logger.error(f"Failed to select dropdown option: {e}")
-                        success = False
-            
-            # Click next/submit button
-            if not self.click_next_button():
-                logger.warning("Could not find next button")
-                success = False
-            
-            return success
-            
-        except Exception as e:
-            logger.error(f"Error handling survey page: {e}")
-            return False
-    
     def handle_country_selection(self) -> bool:
         """
         Handle the specific country selection question.
@@ -1186,13 +1070,12 @@ class CPXSurveyAutomation:
             logger.error(f"Error in handle_country_selection: {e}")
             return False
     
-    def complete_cpx_survey(self, max_pages: int = 10, use_hybrid: bool = True) -> bool:
+    def complete_cpx_survey(self, max_pages: int = 20) -> bool:
         """
         Complete a CPX Research survey.
         
         Args:
             max_pages: Maximum number of pages to process
-            use_hybrid: Whether to use hybrid vision/DOM approach
             
         Returns:
             bool: True if survey completed successfully
@@ -1204,7 +1087,7 @@ class CPXSurveyAutomation:
                 return False
             
             # Wait for page to load
-            time.sleep(3)
+            time.sleep(5)
             
             # Process survey pages
             page_count = 0
@@ -1212,18 +1095,15 @@ class CPXSurveyAutomation:
                 logger.info(f"Processing survey page {page_count + 1}")
                 
                 # Take screenshot of current page
-                self.browser.take_screenshot(f"cpx_survey_page_{page_count + 1}.png")
+                screenshot_path = os.path.join(self.screenshot_dir, f"cpx_survey_page_{page_count + 1}.png")
+                self.browser.take_screenshot(screenshot_path)
                 
                 # Handle the current page
-                if use_hybrid:
-                    if not self.handle_survey_page_hybrid():
-                        logger.warning(f"Failed to handle page {page_count + 1} with hybrid approach")
-                else:
                 if not self.handle_survey_page():
                     logger.warning(f"Failed to handle page {page_count + 1}")
                 
-                # Wait for page transition
-                time.sleep(random.uniform(2, 4))
+                # Wait for page transition with random delay
+                time.sleep(random.uniform(3, 6))
                 
                 # Check if survey is complete
                 current_url = self.browser.get_current_url()
@@ -1234,7 +1114,8 @@ class CPXSurveyAutomation:
                 page_count += 1
             
             # Take final screenshot
-            self.browser.take_screenshot("cpx_survey_complete.png")
+            final_screenshot_path = os.path.join(self.screenshot_dir, "cpx_survey_complete.png")
+            self.browser.take_screenshot(final_screenshot_path)
             logger.info("CPX survey automation completed")
             return True
             
@@ -1249,46 +1130,4 @@ class CPXSurveyAutomation:
     
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
-        self.close_browser()
-
-
-def main():
-    """
-    Main function to run CPX survey automation.
-    """
-    print("CPX Research Survey Automation")
-    print("=" * 35)
-    print("This script will automate CPX Research surveys.")
-    print("Make sure you have valid CPX Research credentials.")
-    print()
-    
-    # Update user credentials if needed
-    user_id = input("Enter your CPX user ID (or press Enter for default): ").strip()
-    app_id = input("Enter your CPX app ID (or press Enter for default): ").strip()
-    
-    if user_id:
-        CPXSurveyAutomation.user_id = user_id
-    if app_id:
-        CPXSurveyAutomation.app_id = app_id
-    
-    print(f"\nUsing CPX Research URL: {CPXSurveyAutomation.cpx_url}")
-    print(f"User ID: {CPXSurveyAutomation.user_id}")
-    print(f"App ID: {CPXSurveyAutomation.app_id}")
-    print()
-    
-    # Ask about hybrid mode
-    use_hybrid = input("Use hybrid vision/DOM approach? (y/n, default: y): ").strip().lower()
-    use_hybrid = use_hybrid != 'n'
-    
-    confirm = input("Start CPX survey automation? (y/n): ").strip().lower()
-    if confirm != 'y':
-        print("Automation cancelled.")
-        return
-    
-    # Run the automation
-    with CPXSurveyAutomation(headless=False) as cpx_automation:
-        cpx_automation.complete_cpx_survey(use_hybrid=use_hybrid)
-
-
-if __name__ == "__main__":
-    main() 
+        self.close_browser() 

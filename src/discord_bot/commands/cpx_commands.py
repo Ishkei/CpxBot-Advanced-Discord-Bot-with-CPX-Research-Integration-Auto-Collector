@@ -6,6 +6,7 @@ Handles CPX Research specific commands like /offers, /withdraw, etc.
 
 import discord
 from discord.ext import commands
+from discord import app_commands
 from loguru import logger
 import asyncio
 from typing import Dict, Any, Optional
@@ -21,8 +22,8 @@ class CPXCommands(commands.Cog):
         self.config = bot.config
         self.cpx_config = self.config.get("cpx_research", {})
         
-    @commands.command(name="offers")
-    async def offers(self, ctx):
+    @app_commands.command(name="offers", description="Access CPX Research offers and surveys.")
+    async def offers(self, interaction: discord.Interaction):
         """Access CPX Research offers and surveys.
         
         This command will:
@@ -32,7 +33,7 @@ class CPXCommands(commands.Cog):
         """
         try:
             # Check if user has character set up
-            character_status = await self._check_character_setup(ctx)
+            character_status = await self._check_character_setup(interaction)
             if not character_status:
                 embed = discord.Embed(
                     title="❌ Character Setup Required",
@@ -45,31 +46,31 @@ class CPXCommands(commands.Cog):
                           "2. Then use `/offers` again to access surveys",
                     inline=False
                 )
-                await ctx.send(embed=embed)
+                await interaction.response.send_message(embed=embed, ephemeral=True)
                 return
             
             # Start CPX Research survey automation
-            await ctx.send("🎯 Starting CPX Research surveys...")
+            await interaction.response.send_message("🎯 Starting CPX Research surveys...", ephemeral=True)
             
             # Create background task for survey automation
-            asyncio.create_task(self._run_cpx_surveys(ctx))
+            asyncio.create_task(self._run_cpx_surveys(interaction))
             
         except Exception as e:
             logger.error(f"Error in offers command: {e}")
-            await ctx.send("❌ An error occurred while accessing offers.")
+            await interaction.followup.send("❌ An error occurred while accessing offers.", ephemeral=True)
     
-    async def _check_character_setup(self, ctx) -> bool:
+    async def _check_character_setup(self, interaction: discord.Interaction) -> bool:
         """Check if user has set up their character."""
         # This would typically check against the game's API
         # For now, we'll assume the user has set up their character
         # In a real implementation, you'd query the Discord bot's character system
         return True
     
-    async def _run_cpx_surveys(self, ctx):
+    async def _run_cpx_surveys(self, interaction: discord.Interaction):
         """Run CPX Research survey automation in background."""
         try:
             # Import the CPX scraper
-            from ..handlers.cpx_handler import CPXHandler
+            from src.survey_handler.cpx_handler import CPXHandler
             
             cpx_handler = CPXHandler(self.config)
             
@@ -90,7 +91,7 @@ class CPXCommands(commands.Cog):
                 inline=True
             )
             
-            status_msg = await ctx.send(embed=embed)
+            status_msg = await interaction.followup.send(embed=embed)
             
             # Run the survey automation
             results = await cpx_handler.run_survey_automation()
@@ -121,10 +122,10 @@ class CPXCommands(commands.Cog):
             
         except Exception as e:
             logger.error(f"Error in CPX survey automation: {e}")
-            await ctx.send(f"❌ Error during survey automation: {str(e)}")
+            await interaction.followup.send(f"❌ Error during survey automation: {str(e)}", ephemeral=True)
     
-    @commands.command(name="withdraw")
-    async def withdraw(self, ctx, amount: Optional[float] = None):
+    @app_commands.command(name="withdraw", description="Withdraw earnings to your crypto wallet.")
+    async def withdraw(self, interaction: discord.Interaction, amount: Optional[float] = None):
         """Withdraw earnings to your crypto wallet.
         
         Usage:
@@ -133,7 +134,7 @@ class CPXCommands(commands.Cog):
         """
         try:
             # Get user's current balance
-            balance = await self._get_user_balance(ctx.author.id)
+            balance = await self._get_user_balance(interaction.user.id)
             
             if balance <= 0:
                 embed = discord.Embed(
@@ -141,7 +142,7 @@ class CPXCommands(commands.Cog):
                     description="You don't have any earnings to withdraw.",
                     color=discord.Color.orange()
                 )
-                await ctx.send(embed=embed)
+                await interaction.response.send_message(embed=embed, ephemeral=True)
                 return
             
             # Determine withdrawal amount
@@ -153,7 +154,7 @@ class CPXCommands(commands.Cog):
                     description=f"You only have ${balance:.2f} available.",
                     color=discord.Color.red()
                 )
-                await ctx.send(embed=embed)
+                await interaction.response.send_message(embed=embed, ephemeral=True)
                 return
             
             # Process withdrawal
@@ -170,11 +171,11 @@ class CPXCommands(commands.Cog):
                 inline=False
             )
             
-            await ctx.send(embed=embed)
+            await interaction.response.send_message(embed=embed)
             
         except Exception as e:
             logger.error(f"Error in withdraw command: {e}")
-            await ctx.send("❌ An error occurred while processing withdrawal.")
+            await interaction.response.send_message("❌ An error occurred while processing withdrawal.", ephemeral=True)
     
     async def _get_user_balance(self, user_id: int) -> float:
         """Get user's current balance from database."""
@@ -186,8 +187,8 @@ class CPXCommands(commands.Cog):
             logger.error(f"Error getting user balance: {e}")
             return 0.0
     
-    @commands.command(name="cpx_status")
-    async def cpx_status(self, ctx):
+    @app_commands.command(name="cpx_status", description="Check CPX Research status and configuration.")
+    async def cpx_status(self, interaction: discord.Interaction):
         """Check CPX Research status and configuration."""
         try:
             embed = discord.Embed(
@@ -231,14 +232,14 @@ class CPXCommands(commands.Cog):
                 inline=True
             )
             
-            await ctx.send(embed=embed)
+            await interaction.response.send_message(embed=embed)
             
         except Exception as e:
             logger.error(f"Error in cpx_status command: {e}")
-            await ctx.send("❌ An error occurred while getting CPX status.")
+            await interaction.response.send_message("❌ An error occurred while getting CPX status.", ephemeral=True)
     
-    @commands.command(name="setup")
-    async def setup(self, ctx):
+    @app_commands.command(name="setup", description="Setup your character for CPX Research surveys.")
+    async def setup(self, interaction: discord.Interaction):
         """Setup your character for CPX Research surveys."""
         try:
             embed = discord.Embed(
@@ -260,13 +261,13 @@ class CPXCommands(commands.Cog):
                 inline=False
             )
             
-            await ctx.send(embed=embed)
+            await interaction.response.send_message(embed=embed)
             
         except Exception as e:
             logger.error(f"Error in setup command: {e}")
-            await ctx.send("❌ An error occurred during character setup.")
+            await interaction.response.send_message("❌ An error occurred during character setup.", ephemeral=True)
 
 
-def setup(bot):
+async def setup(bot):
     """Add the CPX commands cog to the bot."""
-    bot.add_cog(CPXCommands(bot)) 
+    await bot.add_cog(CPXCommands(bot)) 
