@@ -110,18 +110,22 @@ class SlashCommands(commands.Cog):
                 return
             
             embed = discord.Embed(
-                title="💳 Withdrawal Request",
-                color=discord.Color.green(),
+                title="💰 Withdrawal Request",
+                color=discord.Color.gold(),
                 description=f"Processing withdrawal of ${amount:.2f}"
             )
             embed.add_field(name="Amount", value=f"${amount:.2f}", inline=True)
+            embed.add_field(name="Status", value="⏳ Processing", inline=True)
             embed.add_field(name="User", value=interaction.user.mention, inline=True)
-            embed.add_field(name="Status", value="Processing...", inline=True)
-            
-            # Send withdrawal notification
-            self.bot.webhook_manager.send_withdrawal_confirmation(amount, "Discord", f"User: {interaction.user.name}")
             
             await interaction.followup.send(embed=embed)
+            
+            # Send webhook notification
+            self.bot.webhook_manager.send_withdrawal_notification(
+                interaction.user.name,
+                amount,
+                interaction.guild.name
+            )
             
         except Exception as e:
             logger.error(f"Error in withdraw slash command: {e}")
@@ -129,45 +133,50 @@ class SlashCommands(commands.Cog):
     
     @app_commands.command(name="help", description="Show all commands")
     async def help(self, interaction: discord.Interaction):
-        """Show all available commands."""
-        embed = discord.Embed(
-            title="🤖 Survey Bot Help",
-            color=discord.Color.blue(),
-            description="Available commands and features"
-        )
+        """Show help information."""
+        await interaction.response.defer()
         
-        embed.add_field(
-            name="📊 Survey Commands",
-            value="• `/survey` - Check bot status\n"
-                  "• `/start` - Start survey automation\n"
-                  "• `/earnings` - Check your earnings\n"
-                  "• `/withdraw <amount>` - Withdraw earnings",
-            inline=False
-        )
-        
-        embed.add_field(
-            name="🎮 Role Commands",
-            value="• `/assign` - Assign gamer role\n"
-                  "• `/remove` - Remove gamer role\n"
-                  "• `/secret` - Secret command (requires role)",
-            inline=False
-        )
-        
-        embed.add_field(
-            name="🔧 Utility Commands",
-            value="• `/help` - Show this help message\n"
-                  "• `/poll <question>` - Create a poll",
-            inline=False
-        )
-        
-        embed.add_field(
-            name="🔗 Prefix Commands",
-            value="• `!survey status` - Alternative commands\n"
-                  "• `!withdraw <amount>` - Alternative withdrawal",
-            inline=False
-        )
-        
-        await interaction.response.send_message(embed=embed)
+        try:
+            embed = discord.Embed(
+                title="🤖 Survey Bot Help",
+                color=discord.Color.blue(),
+                description="Available slash commands and features"
+            )
+            
+            # Survey Commands
+            embed.add_field(
+                name="📊 Survey Commands",
+                value="""`/survey` - Check survey status
+`/start` - Start survey automation
+`/earnings` - Check earnings
+`/withdraw <amount>` - Withdraw earnings""",
+                inline=False
+            )
+            
+            # Role Commands
+            embed.add_field(
+                name="🎭 Role Commands",
+                value="""`/assign` - Assign gamer role
+`/remove` - Remove gamer role
+`/secret` - Secret command (requires gamer role)""",
+                inline=False
+            )
+            
+            # Utility Commands
+            embed.add_field(
+                name="🔧 Utility Commands",
+                value="""`/help` - Show this help
+`/poll <question>` - Create a poll""",
+                inline=False
+            )
+            
+            embed.set_footer(text="Use !help for prefix commands")
+            
+            await interaction.followup.send(embed=embed)
+            
+        except Exception as e:
+            logger.error(f"Error in help slash command: {e}")
+            await interaction.followup.send("❌ An error occurred while showing help.")
     
     @app_commands.command(name="assign", description="Assign gamer role")
     async def assign(self, interaction: discord.Interaction):
@@ -175,29 +184,31 @@ class SlashCommands(commands.Cog):
         await interaction.response.defer()
         
         try:
-            guild = interaction.guild
-            role = discord.utils.get(guild.roles, name="gamer")
+            # Check if gamer role exists
+            gamer_role = discord.utils.get(interaction.guild.roles, name="gamer")
             
-            if not role:
-                # Create the role if it doesn't exist
-                role = await guild.create_role(name="gamer", color=discord.Color.green())
-                logger.info(f"Created gamer role: {role.name}")
+            if not gamer_role:
+                # Create the gamer role if it doesn't exist
+                gamer_role = await interaction.guild.create_role(
+                    name="gamer",
+                    color=discord.Color.green(),
+                    reason="Auto-created gamer role"
+                )
+                logger.info(f"Created gamer role in {interaction.guild.name}")
             
-            member = interaction.user
-            
-            if role in member.roles:
-                await interaction.followup.send("❌ You already have the gamer role!")
+            # Check if user already has the role
+            if gamer_role in interaction.user.roles:
+                await interaction.followup.send("✅ You already have the gamer role!")
                 return
             
-            await member.add_roles(role)
+            # Assign the role
+            await interaction.user.add_roles(gamer_role)
             
             embed = discord.Embed(
                 title="🎮 Role Assigned",
                 color=discord.Color.green(),
-                description=f"Successfully assigned gamer role to {member.mention}"
+                description=f"Successfully assigned gamer role to {interaction.user.mention}"
             )
-            embed.add_field(name="Role", value=role.mention, inline=True)
-            embed.add_field(name="User", value=member.mention, inline=True)
             
             await interaction.followup.send(embed=embed)
             
@@ -211,28 +222,24 @@ class SlashCommands(commands.Cog):
         await interaction.response.defer()
         
         try:
-            guild = interaction.guild
-            role = discord.utils.get(guild.roles, name="gamer")
+            gamer_role = discord.utils.get(interaction.guild.roles, name="gamer")
             
-            if not role:
-                await interaction.followup.send("❌ Gamer role doesn't exist!")
+            if not gamer_role:
+                await interaction.followup.send("❌ Gamer role doesn't exist.")
                 return
             
-            member = interaction.user
-            
-            if role not in member.roles:
-                await interaction.followup.send("❌ You don't have the gamer role!")
+            if gamer_role not in interaction.user.roles:
+                await interaction.followup.send("❌ You don't have the gamer role.")
                 return
             
-            await member.remove_roles(role)
+            # Remove the role
+            await interaction.user.remove_roles(gamer_role)
             
             embed = discord.Embed(
                 title="🎮 Role Removed",
                 color=discord.Color.red(),
-                description=f"Successfully removed gamer role from {member.mention}"
+                description=f"Successfully removed gamer role from {interaction.user.mention}"
             )
-            embed.add_field(name="Role", value=role.mention, inline=True)
-            embed.add_field(name="User", value=member.mention, inline=True)
             
             await interaction.followup.send(embed=embed)
             
@@ -242,25 +249,22 @@ class SlashCommands(commands.Cog):
     
     @app_commands.command(name="secret", description="Secret command (requires gamer role)")
     async def secret(self, interaction: discord.Interaction):
-        """Secret command that requires gamer role."""
+        """Secret command for gamers only."""
         await interaction.response.defer()
         
         try:
-            member = interaction.user
-            role = discord.utils.get(interaction.guild.roles, name="gamer")
+            # Check if user has gamer role
+            gamer_role = discord.utils.get(interaction.guild.roles, name="gamer")
             
-            if not role or role not in member.roles:
+            if not gamer_role or gamer_role not in interaction.user.roles:
                 await interaction.followup.send("❌ You need the gamer role to use this command!")
                 return
             
             embed = discord.Embed(
-                title="🤫 Secret Command",
+                title="🎮 Secret Command",
                 color=discord.Color.purple(),
-                description="You found the secret command!"
+                description="You found the secret command! This is only for gamers."
             )
-            embed.add_field(name="User", value=member.mention, inline=True)
-            embed.add_field(name="Role", value=role.mention, inline=True)
-            embed.add_field(name="Message", value="🎉 Congratulations! You have access to secret features!", inline=False)
             
             await interaction.followup.send(embed=embed)
             
@@ -272,36 +276,36 @@ class SlashCommands(commands.Cog):
     @app_commands.describe(question="The poll question")
     async def poll(self, interaction: discord.Interaction, question: str):
         """Create a poll with reactions."""
+        await interaction.response.defer()
+        
         try:
             embed = discord.Embed(
                 title="📊 Poll",
-                color=discord.Color.blue(),
-                description=question
+                description=question,
+                color=discord.Color.blue()
             )
-            embed.add_field(name="Created by", value=interaction.user.mention, inline=True)
-            embed.add_field(name="Votes", value="👍 0 | 👎 0", inline=True)
+            embed.set_footer(text=f"Poll created by {interaction.user.name}")
             
-            message = await interaction.response.send_message(embed=embed)
+            poll_message = await interaction.followup.send(embed=embed)
             
-            # Add reactions
-            await message.add_reaction("👍")
-            await message.add_reaction("👎")
+            # Add reaction options
+            reactions = ["👍", "👎", "🤷"]
+            for reaction in reactions:
+                await poll_message.add_reaction(reaction)
             
         except Exception as e:
             logger.error(f"Error in poll slash command: {e}")
-            await interaction.response.send_message("❌ An error occurred while creating the poll.")
+            await interaction.followup.send("❌ An error occurred while creating poll.")
 
 
 async def setup(bot):
-    """Setup function for the slash commands cog."""
+    """Setup the slash commands cog."""
     await bot.add_cog(SlashCommands(bot))
-    logger.info("✅ Slash commands cog loaded")
 
 
 async def register_commands(bot):
     """Register slash commands with Discord."""
     try:
-        # Sync commands to Discord
         await bot.tree.sync()
         logger.info("✅ Slash commands registered successfully")
     except Exception as e:

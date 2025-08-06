@@ -27,5 +27,8 @@ aiohttp>=3.8.0
 # Image Processing (for OCR if needed)
 Pillow>=10.0.0
 
+# Computer Vision (for survey automation)
+opencv-python>=4.8.0
+
 # Environment Management
 python-dotenv>=1.0.0 

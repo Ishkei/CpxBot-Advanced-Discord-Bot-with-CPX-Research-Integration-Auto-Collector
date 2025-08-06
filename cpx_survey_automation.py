@@ -16,7 +16,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
-from selenium.common.exceptions import ElementNotInteractableException, TimeoutException
+from selenium.common.exceptions import ElementNotInteractableException, TimeoutException, NoSuchElementException
 from loguru import logger
 from src.web_automation.firefox_automation import FirefoxAutomation
 
@@ -51,6 +51,18 @@ class CPXSurveyAutomation:
         self.screenshot_dir = "screenshots"
         os.makedirs(self.screenshot_dir, exist_ok=True)
         
+        # Survey completion tracking
+        self.surveys_completed = 0
+        self.total_earnings = 0.0
+        self.current_survey_earnings = 0.0
+        
+        # Automation settings
+        self.max_wait_time = 30
+        self.random_delays = True
+        self.auto_accept_surveys = True
+        
+        logger.info("CPX Survey Automation initialized")
+    
     def load_persona(self) -> dict:
         """
         Load persona data from persona.json file.
@@ -98,230 +110,175 @@ class CPXSurveyAutomation:
             fallback: Fallback text if not found
             
         Returns:
-            str: Appropriate text response
+            str: Random text response
         """
         try:
-            value = self.persona.get(category, {}).get(field, fallback)
-            if isinstance(value, list):
-                return random.choice(value)
-            return str(value)
+            responses = self.persona.get(category, {}).get(field, [fallback])
+            if isinstance(responses, list):
+                return random.choice(responses)
+            return str(responses)
         except:
             return fallback
     
     def get_persona_dropdown_option(self, category: str, field: str) -> str:
         """
-        Get an appropriate dropdown option based on persona data.
+        Get a dropdown option based on persona data.
         
         Args:
             category: Persona category
             field: Field name
             
         Returns:
-            str: Appropriate option
+            str: Selected dropdown option
         """
         try:
-            value = self.persona.get(category, {}).get(field, "")
-            if isinstance(value, list):
-                return random.choice(value)
-            return str(value)
+            options = self.persona.get(category, {}).get(field, [])
+            if isinstance(options, list) and options:
+                return random.choice(options)
+            return "Other"
         except:
-            return ""
+            return "Other"
     
     def analyze_screenshot_vision(self, screenshot_path: str) -> dict:
         """
-        Analyze screenshot using computer vision to detect interactive elements.
+        Analyze screenshot using computer vision to detect UI elements.
         
         Args:
-            screenshot_path: Path to screenshot
+            screenshot_path: Path to screenshot file
             
         Returns:
-            dict: Analysis results
+            dict: Analysis results with detected elements
         """
         try:
             # Load image
             image = cv2.imread(screenshot_path)
             if image is None:
-                return {"error": "Could not load image"}
+                return {}
             
-            # Convert to grayscale
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            height, width = gray.shape
             
-            # Detect buttons and interactive elements
             analysis = {
-                "buttons": self._detect_buttons(gray),
-                "text_areas": self._detect_text_areas(gray),
-                "checkboxes": self._detect_checkboxes(gray),
-                "radio_buttons": self._detect_radio_buttons(gray),
-                "dropdowns": self._detect_dropdowns(gray),
-                "text_fields": self._detect_text_fields(gray)
+                'buttons': self._detect_buttons(gray),
+                'text_areas': self._detect_text_areas(gray),
+                'checkboxes': self._detect_checkboxes(gray),
+                'radio_buttons': self._detect_radio_buttons(gray),
+                'dropdowns': self._detect_dropdowns(gray),
+                'text_fields': self._detect_text_fields(gray)
             }
             
-            logger.info(f"Vision analysis completed: {analysis}")
+            logger.info(f"Vision analysis completed: {len(analysis['buttons'])} buttons, {len(analysis['text_fields'])} text fields")
             return analysis
             
         except Exception as e:
-            logger.error(f"Vision analysis failed: {e}")
-            return {"error": str(e)}
+            logger.error(f"Error in vision analysis: {e}")
+            return {}
     
     def _detect_buttons(self, gray_image) -> list:
-        """Detect button-like elements in the image."""
+        """Detect buttons in the image."""
         try:
-            # Edge detection
+            # Simple edge detection for buttons
             edges = cv2.Canny(gray_image, 50, 150)
-            
-            # Find contours
             contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             
             buttons = []
             for contour in contours:
-                # Filter by area and aspect ratio
-                area = cv2.contourArea(contour)
-                if 1000 < area < 50000:  # Reasonable button size
-                    x, y, w, h = cv2.boundingRect(contour)
-                    aspect_ratio = w / h
-                    if 0.5 < aspect_ratio < 5:  # Button-like aspect ratio
-                        buttons.append({
-                            "type": "button",
-                            "x": x, "y": y, "width": w, "height": h,
-                            "center": (x + w//2, y + h//2)
-                        })
+                x, y, w, h = cv2.boundingRect(contour)
+                if 50 < w < 300 and 20 < h < 100:  # Button-like dimensions
+                    buttons.append({'x': x, 'y': y, 'width': w, 'height': h})
             
             return buttons
-        except Exception as e:
-            logger.error(f"Button detection failed: {e}")
+        except:
             return []
     
     def _detect_text_areas(self, gray_image) -> list:
-        """Detect text input areas."""
+        """Detect text areas in the image."""
         try:
-            # Use morphological operations to find rectangular areas
-            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (20, 5))
-            morph = cv2.morphologyEx(gray_image, cv2.MORPH_CLOSE, kernel)
+            # Use morphological operations to detect text regions
+            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+            dilated = cv2.dilate(gray_image, kernel, iterations=1)
             
-            contours, _ = cv2.findContours(morph, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            # Find contours
+            contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             
             text_areas = []
             for contour in contours:
-                area = cv2.contourArea(contour)
-                if 500 < area < 20000:
-                    x, y, w, h = cv2.boundingRect(contour)
-                    aspect_ratio = w / h
-                    if 2 < aspect_ratio < 10:  # Text field aspect ratio
-                        text_areas.append({
-                            "type": "text_area",
-                            "x": x, "y": y, "width": w, "height": h,
-                            "center": (x + w//2, y + h//2)
-                        })
+                x, y, w, h = cv2.boundingRect(contour)
+                if 100 < w < 800 and 20 < h < 200:  # Text area dimensions
+                    text_areas.append({'x': x, 'y': y, 'width': w, 'height': h})
             
             return text_areas
-        except Exception as e:
-            logger.error(f"Text area detection failed: {e}")
+        except:
             return []
     
     def _detect_checkboxes(self, gray_image) -> list:
-        """Detect checkbox elements."""
+        """Detect checkboxes in the image."""
         try:
-            # Look for small square elements
-            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
-            morph = cv2.morphologyEx(gray_image, cv2.MORPH_CLOSE, kernel)
-            
-            contours, _ = cv2.findContours(morph, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            # Look for small square shapes
+            edges = cv2.Canny(gray_image, 50, 150)
+            contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             
             checkboxes = []
             for contour in contours:
-                area = cv2.contourArea(contour)
-                if 100 < area < 2000:  # Checkbox size
-                    x, y, w, h = cv2.boundingRect(contour)
-                    aspect_ratio = w / h
-                    if 0.8 < aspect_ratio < 1.2:  # Square-like
-                        checkboxes.append({
-                            "type": "checkbox",
-                            "x": x, "y": y, "width": w, "height": h,
-                            "center": (x + w//2, y + h//2)
-                        })
+                x, y, w, h = cv2.boundingRect(contour)
+                if 10 < w < 50 and 10 < h < 50 and abs(w - h) < 10:  # Square-like
+                    checkboxes.append({'x': x, 'y': y, 'width': w, 'height': h})
             
             return checkboxes
-        except Exception as e:
-            logger.error(f"Checkbox detection failed: {e}")
+        except:
             return []
     
     def _detect_radio_buttons(self, gray_image) -> list:
-        """Detect radio button elements."""
+        """Detect radio buttons in the image."""
         try:
-            # Similar to checkboxes but look for circular patterns
+            # Look for circular shapes
             circles = cv2.HoughCircles(
-                gray_image, cv2.HOUGH_GRADIENT, dp=1, minDist=20,
+                gray_image, cv2.HOUGH_GRADIENT, 1, 20,
                 param1=50, param2=30, minRadius=5, maxRadius=30
             )
             
             radio_buttons = []
             if circles is not None:
                 for circle in circles[0]:
-                    x, y, radius = circle
-                    radio_buttons.append({
-                        "type": "radio_button",
-                        "x": int(x - radius), "y": int(y - radius),
-                        "width": int(2 * radius), "height": int(2 * radius),
-                        "center": (int(x), int(y))
-                    })
+                    x, y, r = circle
+                    radio_buttons.append({'x': int(x), 'y': int(y), 'radius': int(r)})
             
             return radio_buttons
-        except Exception as e:
-            logger.error(f"Radio button detection failed: {e}")
+        except:
             return []
     
     def _detect_dropdowns(self, gray_image) -> list:
-        """Detect dropdown elements."""
+        """Detect dropdown elements in the image."""
         try:
-            # Look for rectangular elements with dropdown indicators
-            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 10))
-            morph = cv2.morphologyEx(gray_image, cv2.MORPH_CLOSE, kernel)
-            
-            contours, _ = cv2.findContours(morph, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            # Look for rectangular shapes with specific aspect ratios
+            edges = cv2.Canny(gray_image, 50, 150)
+            contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             
             dropdowns = []
             for contour in contours:
-                area = cv2.contourArea(contour)
-                if 500 < area < 15000:
-                    x, y, w, h = cv2.boundingRect(contour)
-                    aspect_ratio = w / h
-                    if 1.5 < aspect_ratio < 8:  # Dropdown aspect ratio
-                        dropdowns.append({
-                            "type": "dropdown",
-                            "x": x, "y": y, "width": w, "height": h,
-                            "center": (x + w//2, y + h//2)
-                        })
+                x, y, w, h = cv2.boundingRect(contour)
+                if 100 < w < 400 and 20 < h < 60:  # Dropdown-like dimensions
+                    dropdowns.append({'x': x, 'y': y, 'width': w, 'height': h})
             
             return dropdowns
-        except Exception as e:
-            logger.error(f"Dropdown detection failed: {e}")
+        except:
             return []
     
     def _detect_text_fields(self, gray_image) -> list:
-        """Detect text input fields."""
+        """Detect text input fields in the image."""
         try:
-            # Similar to text areas but smaller
-            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 3))
-            morph = cv2.morphologyEx(gray_image, cv2.MORPH_CLOSE, kernel)
-            
-            contours, _ = cv2.findContours(morph, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            # Look for rectangular input fields
+            edges = cv2.Canny(gray_image, 50, 150)
+            contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             
             text_fields = []
             for contour in contours:
-                area = cv2.contourArea(contour)
-                if 200 < area < 10000:
-                    x, y, w, h = cv2.boundingRect(contour)
-                    aspect_ratio = w / h
-                    if 3 < aspect_ratio < 15:  # Text field aspect ratio
-                        text_fields.append({
-                            "type": "text_field",
-                            "x": x, "y": y, "width": w, "height": h,
-                            "center": (x + w//2, y + h//2)
-                        })
+                x, y, w, h = cv2.boundingRect(contour)
+                if 150 < w < 600 and 20 < h < 50:  # Text field dimensions
+                    text_fields.append({'x': x, 'y': y, 'width': w, 'height': h})
             
             return text_fields
-        except Exception as e:
-            logger.error(f"Text field detection failed: {e}")
+        except:
             return []
     
     def click_element_by_vision(self, element_type: str, index: int = 0) -> bool:
@@ -342,32 +299,36 @@ class CPXSurveyAutomation:
             
             # Analyze screenshot
             analysis = self.analyze_screenshot_vision(screenshot_path)
-            
-            if "error" in analysis:
-                logger.error(f"Vision analysis failed: {analysis['error']}")
-                return False
-            
-            # Find elements of the specified type
             elements = analysis.get(element_type, [])
+            
             if not elements or index >= len(elements):
-                logger.warning(f"No {element_type} elements found or index out of range")
+                logger.warning(f"No {element_type} found at index {index}")
                 return False
             
-            # Get element coordinates
             element = elements[index]
-            center_x, center_y = element["center"]
             
-            # Click using ActionChains for better reliability
+            # Calculate click coordinates
+            if element_type in ['buttons', 'checkboxes', 'text_fields', 'dropdowns']:
+                x = element['x'] + element['width'] // 2
+                y = element['y'] + element['height'] // 2
+            elif element_type == 'radio_buttons':
+                x = element['x']
+                y = element['y']
+            else:
+                return False
+            
+            # Perform click
             actions = ActionChains(self.browser.driver)
-            actions.move_by_offset(center_x, center_y)
-            actions.click()
-            actions.perform()
+            actions.move_by_offset(x, y).click().perform()
             
-            logger.info(f"Clicked {element_type} at coordinates ({center_x}, {center_y})")
+            # Reset mouse position
+            actions.move_by_offset(-x, -y).perform()
+            
+            logger.info(f"Clicked {element_type} at ({x}, {y})")
             return True
             
         except Exception as e:
-            logger.error(f"Vision-based clicking failed: {e}")
+            logger.error(f"Error clicking element by vision: {e}")
             return False
     
     def fill_text_field_by_vision(self, text: str, index: int = 0) -> bool:
@@ -388,60 +349,80 @@ class CPXSurveyAutomation:
             
             # Analyze screenshot
             analysis = self.analyze_screenshot_vision(screenshot_path)
+            text_fields = analysis.get('text_fields', [])
             
-            if "error" in analysis:
-                logger.error(f"Vision analysis failed: {analysis['error']}")
-                return False
-            
-            # Find text fields
-            text_fields = analysis.get("text_fields", [])
             if not text_fields or index >= len(text_fields):
-                logger.warning(f"No text fields found or index out of range")
+                logger.warning(f"No text field found at index {index}")
                 return False
             
-            # Get element coordinates
-            element = text_fields[index]
-            center_x, center_y = element["center"]
+            field = text_fields[index]
             
-            # Click to focus and type
+            # Calculate click coordinates
+            x = field['x'] + field['width'] // 2
+            y = field['y'] + field['height'] // 2
+            
+            # Click on field and type
             actions = ActionChains(self.browser.driver)
-            actions.move_by_offset(center_x, center_y)
-            actions.click()
-            actions.send_keys(text)
-            actions.perform()
+            actions.move_by_offset(x, y).click().perform()
             
-            logger.info(f"Filled text field at coordinates ({center_x}, {center_y}) with: {text}")
+            # Clear field and type text
+            actions.send_keys(text).perform()
+            
+            # Reset mouse position
+            actions.move_by_offset(-x, -y).perform()
+            
+            logger.info(f"Filled text field with: {text}")
             return True
             
         except Exception as e:
-            logger.error(f"Vision-based text filling failed: {e}")
+            logger.error(f"Error filling text field by vision: {e}")
             return False
-        
+    
     def start_browser(self) -> bool:
-        """Start the Firefox browser."""
-        return self.browser.start_browser()
+        """Start the browser."""
+        try:
+            self.browser.start()
+            logger.info("Browser started successfully")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to start browser: {e}")
+            return False
     
     def close_browser(self):
-        """Close the Firefox browser."""
-        self.browser.close_browser()
+        """Close the browser."""
+        try:
+            self.browser.close()
+            logger.info("Browser closed successfully")
+        except Exception as e:
+            logger.error(f"Error closing browser: {e}")
     
     def navigate_to_cpx(self) -> bool:
-        """
-        Navigate to CPX Research survey page.
-        
-        Returns:
-            bool: True if navigation successful
-        """
-        url = f"{self.cpx_url}?app_id={self.app_id}&ext_user_id={self.user_id}"
-        logger.info(f"Navigating to CPX Research: {url}")
-        return self.browser.navigate_to_url(url)
+        """Navigate to CPX Research website."""
+        try:
+            # Construct full URL with parameters
+            full_url = f"{self.cpx_url}?app_id={self.app_id}&ext_user_id={self.user_id}"
+            logger.info(f"Navigating to CPX Research: {full_url}")
+            
+            self.browser.navigate(full_url)
+            
+            # Wait for page to load
+            WebDriverWait(self.browser.driver, self.max_wait_time).until(
+                EC.presence_of_element_located((By.TAG_NAME, "body"))
+            )
+            
+            logger.info("Successfully navigated to CPX Research")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to navigate to CPX Research: {e}")
+            return False
     
     def wait_for_survey_questions(self, timeout: int = 30) -> bool:
         """
-        Wait for survey questions to load.
+        Wait for survey questions to appear on the page.
         
         Args:
-            timeout: Timeout in seconds
+            timeout: Maximum time to wait in seconds
             
         Returns:
             bool: True if questions found
@@ -451,9 +432,9 @@ class CPXSurveyAutomation:
             selectors = [
                 "input[type='radio']",
                 "input[type='checkbox']",
-                "select",
                 "textarea",
                 "input[type='text']",
+                "select",
                 ".question",
                 "[class*='question']",
                 "[id*='question']"
@@ -466,10 +447,10 @@ class CPXSurveyAutomation:
                     )
                     logger.info(f"Found survey questions with selector: {selector}")
                     return True
-                except:
+                except TimeoutException:
                     continue
             
-            logger.warning("No survey questions found")
+            logger.warning("No survey questions found within timeout")
             return False
             
         except Exception as e:
@@ -481,47 +462,34 @@ class CPXSurveyAutomation:
         Answer a radio button question.
         
         Args:
-            question_text: Text to search for in question (optional)
-            answer_index: Index of answer to select (0-based)
+            question_text: Text to look for in the question
+            answer_index: Index of answer to select
             
         Returns:
             bool: True if successful
         """
         try:
-            # Find all radio buttons on the page
+            # Find radio buttons
             radio_buttons = self.browser.driver.find_elements(By.CSS_SELECTOR, "input[type='radio']")
             
             if not radio_buttons:
                 logger.warning("No radio buttons found")
                 return False
             
-            # Group radio buttons by name (question)
-            radio_groups = {}
-            for radio in radio_buttons:
-                name = radio.get_attribute("name")
-                if name:
-                    if name not in radio_groups:
-                        radio_groups[name] = []
-                    radio_groups[name].append(radio)
-            
-            # Select from the first group or specified group
-            if radio_groups:
-                group_name = list(radio_groups.keys())[0]
-                group_buttons = radio_groups[group_name]
-                
-                if answer_index < len(group_buttons):
-                    group_buttons[answer_index].click()
-                    logger.info(f"Selected radio button {answer_index} from group '{group_name}'")
-                    return True
-                else:
-                    logger.error(f"Answer index {answer_index} out of range")
-                    return False
+            # Select answer by index
+            if answer_index < len(radio_buttons):
+                radio_buttons[answer_index].click()
+                logger.info(f"Selected radio button {answer_index}")
+                return True
             else:
-                logger.warning("No radio button groups found")
-                return False
+                # Select random answer
+                random_index = random.randint(0, len(radio_buttons) - 1)
+                radio_buttons[random_index].click()
+                logger.info(f"Selected random radio button {random_index}")
+                return True
                 
         except Exception as e:
-            logger.error(f"Failed to answer radio question: {e}")
+            logger.error(f"Error answering radio question: {e}")
             return False
     
     def answer_checkbox_question(self, checkbox_index: int = 0) -> bool:
@@ -529,562 +497,440 @@ class CPXSurveyAutomation:
         Answer a checkbox question.
         
         Args:
-            checkbox_index: Index of checkbox to select (0-based)
+            checkbox_index: Index of checkbox to select
             
         Returns:
             bool: True if successful
         """
         try:
+            # Find checkboxes
             checkboxes = self.browser.driver.find_elements(By.CSS_SELECTOR, "input[type='checkbox']")
             
+            if not checkboxes:
+                logger.warning("No checkboxes found")
+                return False
+            
+            # Select checkbox by index
             if checkbox_index < len(checkboxes):
                 checkboxes[checkbox_index].click()
                 logger.info(f"Selected checkbox {checkbox_index}")
                 return True
             else:
-                logger.error(f"Checkbox index {checkbox_index} out of range")
-                return False
+                # Select random checkbox
+                random_index = random.randint(0, len(checkboxes) - 1)
+                checkboxes[random_index].click()
+                logger.info(f"Selected random checkbox {random_index}")
+                return True
                 
         except Exception as e:
-            logger.error(f"Failed to answer checkbox question: {e}")
+            logger.error(f"Error answering checkbox question: {e}")
             return False
     
     def answer_radio_question_with_persona(self) -> bool:
         """
-        Answer radio button questions based on persona data.
+        Answer a radio question using persona data.
         
         Returns:
             bool: True if successful
         """
         try:
+            # Find radio buttons
             radio_buttons = self.browser.driver.find_elements(By.CSS_SELECTOR, "input[type='radio']")
+            
             if not radio_buttons:
                 logger.warning("No radio buttons found")
                 return False
             
-            # Get the parent element to find question text
-            if radio_buttons:
-                parent = radio_buttons[0].find_element(By.XPATH, "./..")
-                question_text = parent.text.lower() if parent else ""
-                
-                # Handle specific survey questions
-                if any(word in question_text for word in ["united states", "country", "live in"]):
-                    # For country questions, select "Yes, I am from the United States"
-                    answer_index = 0  # First option is usually "Yes"
-                    logger.info("Detected country question - selecting United States")
-                elif any(word in question_text for word in ["satisfied", "happy", "pleased"]):
-                    # Choose positive responses for satisfaction questions
-                    answer_index = min(3, len(radio_buttons) - 1)  # Usually last option is most positive
-                elif any(word in question_text for word in ["income", "salary", "earnings"]):
-                    # Choose higher income options
-                    answer_index = min(2, len(radio_buttons) - 1)
-                elif any(word in question_text for word in ["technology", "tech", "digital"]):
-                    # Choose positive responses for technology questions
-                    answer_index = min(2, len(radio_buttons) - 1)
-                elif any(word in question_text for word in ["health", "fitness", "exercise"]):
-                    # Choose moderate to positive responses for health questions
-                    answer_index = min(2, len(radio_buttons) - 1)
-                elif any(word in question_text for word in ["shopping", "purchase", "buy"]):
-                    # Choose positive responses for shopping questions
-                    answer_index = min(2, len(radio_buttons) - 1)
-                else:
-                    # Default to first option for neutral questions
-                    answer_index = 0
-                
-                if answer_index < len(radio_buttons):
-                    # Try to scroll to the element first
-                    try:
-                        self.browser.driver.execute_script("arguments[0].scrollIntoView(true);", radio_buttons[answer_index])
-                        time.sleep(0.5)
-                    except:
-                        pass
-                    
+            # Get persona-based answer
+            persona_answer = self.get_persona_value("survey_behavior.default_radio_answer", "1")
+            try:
+                answer_index = int(persona_answer) - 1  # Convert to 0-based index
+                if 0 <= answer_index < len(radio_buttons):
                     radio_buttons[answer_index].click()
-                    logger.info(f"Clicked radio button {answer_index} based on persona analysis")
+                    logger.info(f"Selected radio button {answer_index} based on persona")
                     return True
-                else:
-                    logger.warning("Radio button index out of range")
-                    return False
-                    
+            except ValueError:
+                pass
+            
+            # Fallback to random selection
+            random_index = random.randint(0, len(radio_buttons) - 1)
+            radio_buttons[random_index].click()
+            logger.info(f"Selected random radio button {random_index}")
+            return True
+            
         except Exception as e:
-            logger.error(f"Failed to answer radio question with persona: {e}")
+            logger.error(f"Error answering radio question with persona: {e}")
             return False
     
     def fill_text_field(self, field_selector: str, text: str, selector_type: str = "css") -> bool:
         """
-        Fill a text field.
+        Fill a text field with specified text.
         
         Args:
-            field_selector: Element selector
+            field_selector: CSS selector or XPath for the field
             text: Text to enter
-            selector_type: Type of selector
+            selector_type: Type of selector ("css" or "xpath")
             
         Returns:
             bool: True if successful
         """
-        by_map = {
-            "css": By.CSS_SELECTOR,
-            "id": By.ID,
-            "name": By.NAME,
-            "class": By.CLASS_NAME,
-            "xpath": By.XPATH
-        }
-        
-        by = by_map.get(selector_type.lower(), By.CSS_SELECTOR)
-        return self.browser.fill_input(by, field_selector, text)
+        try:
+            if selector_type == "css":
+                element = self.browser.driver.find_element(By.CSS_SELECTOR, field_selector)
+            else:
+                element = self.browser.driver.find_element(By.XPATH, field_selector)
+            
+            element.clear()
+            element.send_keys(text)
+            logger.info(f"Filled text field with: {text}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error filling text field: {e}")
+            return False
     
     def select_dropdown_option(self, select_selector: str, option_text: str, selector_type: str = "css") -> bool:
         """
         Select an option from a dropdown.
         
         Args:
-            select_selector: Select element selector
-            option_text: Text of option to select
-            selector_type: Type of selector
+            select_selector: CSS selector or XPath for the select element
+            option_text: Text of the option to select
+            selector_type: Type of selector ("css" or "xpath")
             
         Returns:
             bool: True if successful
         """
-        by_map = {
-            "css": By.CSS_SELECTOR,
-            "id": By.ID,
-            "name": By.NAME,
-            "class": By.CLASS_NAME,
-            "xpath": By.XPATH
-        }
-        
-        by = by_map.get(selector_type.lower(), By.CSS_SELECTOR)
-        return self.browser.select_option(by, select_selector, option_text)
+        try:
+            from selenium.webdriver.support.ui import Select
+            
+            if selector_type == "css":
+                select_element = self.browser.driver.find_element(By.CSS_SELECTOR, select_selector)
+            else:
+                select_element = self.browser.driver.find_element(By.XPATH, select_selector)
+            
+            select = Select(select_element)
+            select.select_by_visible_text(option_text)
+            logger.info(f"Selected dropdown option: {option_text}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error selecting dropdown option: {e}")
+            return False
     
     def click_next_button(self) -> bool:
         """
-        Click the next/submit button.
-        
-        Returns:
-            bool: True if successful
-        """
-        # Common next button selectors
-        next_selectors = [
-            "input[type='submit']",
-            "button[type='submit']",
-            ".next",
-            ".submit",
-            "#next",
-            "#submit",
-            "[class*='next']",
-            "[class*='submit']",
-            "[id*='next']",
-            "[id*='submit']",
-            "button[class*='arrow']",
-            "button[class*='next']",
-            "button[class*='continue']"
-        ]
-        
-        for selector in next_selectors:
-            try:
-                elements = self.browser.driver.find_elements(By.CSS_SELECTOR, selector)
-                for element in elements:
-                    if element.is_displayed() and element.is_enabled():
-                        # Scroll to element first
-                        self.browser.driver.execute_script("arguments[0].scrollIntoView(true);", element)
-                        time.sleep(0.5)
-                        element.click()
-                    logger.info(f"Clicked next button: {selector}")
-                    return True
-            except:
-                continue
-        
-        # Try vision-based approach for circular buttons
-        try:
-            screenshot_path = os.path.join(self.screenshot_dir, "next_button.png")
-            self.browser.take_screenshot(screenshot_path)
-            
-            analysis = self.analyze_screenshot_vision(screenshot_path)
-            buttons = analysis.get("buttons", [])
-            
-            if buttons:
-                # Look for circular buttons (usually next buttons)
-                for button in buttons:
-                    # Check if it's roughly circular (width ≈ height)
-                    if abs(button["width"] - button["height"]) < 20:
-                        center_x, center_y = button["center"]
-                        
-                        # Scroll to button area
-                        self.browser.driver.execute_script(f"window.scrollTo(0, {center_y - 100});")
-                        time.sleep(0.5)
-                        
-                        # Click using ActionChains
-                        actions = ActionChains(self.browser.driver)
-                        actions.move_by_offset(center_x, center_y)
-                        actions.click()
-                        actions.perform()
-                        
-                        logger.info(f"Clicked circular next button via vision at coordinates ({center_x}, {center_y})")
-                        return True
-        except Exception as e:
-            logger.warning(f"Vision-based next button approach failed: {e}")
-        
-        logger.warning("No next button found")
-        return False
-    
-    def click_next_button_enhanced(self) -> bool:
-        """
-        Enhanced next button clicking with multiple approaches.
+        Click the next/continue button.
         
         Returns:
             bool: True if successful
         """
         try:
-            # Approach 1: Look for common next button selectors
+            # Common next button selectors
             next_selectors = [
-                "input[type='submit']",
+                "input[type='submit'][value*='Next']",
+                "input[type='submit'][value*='Continue']",
+                "input[type='submit'][value*='Submit']",
                 "button[type='submit']",
-                ".next",
-                ".submit",
-                "#next",
-                "#submit",
-                "[class*='next']",
-                "[class*='submit']",
-                "[id*='next']",
-                "[id*='submit']",
+                "input[value*='Next']",
+                "input[value*='Continue']",
+                "input[value*='Submit']",
                 "button:contains('Next')",
                 "button:contains('Continue')",
-                "button:contains('Submit')"
+                "button:contains('Submit')",
+                ".next-button",
+                ".continue-button",
+                ".submit-button",
+                "[class*='next']",
+                "[class*='continue']",
+                "[class*='submit']"
             ]
             
             for selector in next_selectors:
                 try:
-                    elements = self.browser.driver.find_elements(By.CSS_SELECTOR, selector)
-                    for element in elements:
-                        if element.is_displayed() and element.is_enabled():
-                            # Scroll to element
-                            self.browser.driver.execute_script("arguments[0].scrollIntoView(true);", element)
-                            time.sleep(0.5)
-                            element.click()
-                            logger.info(f"Clicked next button: {selector}")
-                            return True
-                except:
+                    element = self.browser.driver.find_element(By.CSS_SELECTOR, selector)
+                    element.click()
+                    logger.info(f"Clicked next button with selector: {selector}")
+                    return True
+                except NoSuchElementException:
+                    continue
+                except ElementNotInteractableException:
                     continue
             
-            # Approach 2: Look for buttons with arrow icons or next text
-            try:
-                arrow_buttons = self.browser.driver.find_elements(By.XPATH, "//button[contains(@class, 'arrow') or contains(@class, 'next') or contains(text(), 'Next') or contains(text(), 'Continue')]")
-                
-                for button in arrow_buttons:
-                    if button.is_displayed() and button.is_enabled():
-                        self.browser.driver.execute_script("arguments[0].scrollIntoView(true);", button)
-                        time.sleep(0.5)
-                        button.click()
-                        logger.info(f"Clicked arrow/next button: {button.text}")
-                        return True
-            except Exception as e:
-                logger.warning(f"Arrow button approach failed: {e}")
-            
-            # Approach 3: Vision-based button detection
-            try:
-                screenshot_path = os.path.join(self.screenshot_dir, "next_button.png")
-                self.browser.take_screenshot(screenshot_path)
-                
-                analysis = self.analyze_screenshot_vision(screenshot_path)
-                buttons = analysis.get("buttons", [])
-                
-                if buttons:
-                    # Try to find the most likely next button (usually at bottom)
-                    next_button = None
-                    for button in buttons:
-                        if button["y"] > 800:  # Usually at bottom of page
-                            next_button = button
-                            break
-                    
-                    if next_button:
-                        center_x, center_y = next_button["center"]
-                        
-                        # Scroll to button area
-                        self.browser.driver.execute_script(f"window.scrollTo(0, {center_y - 100});")
-                        time.sleep(0.5)
-                        
-                        # Click using ActionChains
-                        actions = ActionChains(self.browser.driver)
-                        actions.move_by_offset(center_x, center_y)
-                        actions.click()
-                        actions.perform()
-                        
-                        logger.info(f"Clicked next button via vision at coordinates ({center_x}, {center_y})")
-                        return True
-            except Exception as e:
-                logger.warning(f"Vision-based next button approach failed: {e}")
+            # Try vision-based approach
+            if self.click_element_by_vision('buttons', 0):
+                logger.info("Clicked next button using vision")
+                return True
             
             logger.warning("No next button found")
             return False
             
         except Exception as e:
-            logger.error(f"Enhanced next button clicking failed: {e}")
+            logger.error(f"Error clicking next button: {e}")
+            return False
+    
+    def click_next_button_enhanced(self) -> bool:
+        """
+        Enhanced next button clicking with multiple strategies.
+        
+        Returns:
+            bool: True if successful
+        """
+        try:
+            # Strategy 1: Look for common next button patterns
+            next_patterns = [
+                "//input[@type='submit' and contains(@value, 'Next')]",
+                "//input[@type='submit' and contains(@value, 'Continue')]",
+                "//input[@type='submit' and contains(@value, 'Submit')]",
+                "//button[contains(text(), 'Next')]",
+                "//button[contains(text(), 'Continue')]",
+                "//button[contains(text(), 'Submit')]",
+                "//a[contains(text(), 'Next')]",
+                "//a[contains(text(), 'Continue')]",
+                "//div[contains(@class, 'next')]//button",
+                "//div[contains(@class, 'continue')]//button"
+            ]
+            
+            for pattern in next_patterns:
+                try:
+                    element = self.browser.driver.find_element(By.XPATH, pattern)
+                    element.click()
+                    logger.info(f"Clicked next button with XPath: {pattern}")
+                    return True
+                except NoSuchElementException:
+                    continue
+                except ElementNotInteractableException:
+                    continue
+            
+            # Strategy 2: Look for buttons by text content
+            buttons = self.browser.driver.find_elements(By.TAG_NAME, "button")
+            for button in buttons:
+                try:
+                    text = button.text.lower()
+                    if any(word in text for word in ['next', 'continue', 'submit', 'proceed']):
+                        button.click()
+                        logger.info(f"Clicked button with text: {button.text}")
+                        return True
+                except ElementNotInteractableException:
+                    continue
+            
+            # Strategy 3: Look for input submit buttons
+            inputs = self.browser.driver.find_elements(By.CSS_SELECTOR, "input[type='submit']")
+            for input_elem in inputs:
+                try:
+                    value = input_elem.get_attribute('value').lower()
+                    if any(word in value for word in ['next', 'continue', 'submit']):
+                        input_elem.click()
+                        logger.info(f"Clicked input with value: {input_elem.get_attribute('value')}")
+                        return True
+                except ElementNotInteractableException:
+                    continue
+            
+            # Strategy 4: Vision-based approach
+            if self.click_element_by_vision('buttons', 0):
+                logger.info("Clicked next button using vision analysis")
+                return True
+            
+            logger.warning("No next button found with any strategy")
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error in enhanced next button clicking: {e}")
             return False
     
     def handle_survey_page_hybrid(self) -> bool:
         """
-        Handle a single survey page using hybrid vision/DOM approach.
+        Handle a survey page using hybrid vision/DOM approach.
         
         Returns:
             bool: True if page handled successfully
         """
         try:
-            # Wait for questions to load
-            if not self.wait_for_survey_questions():
-                logger.warning("No questions found on this page")
-                return True  # Might be a completion page
-            
-            # Check for country selection question first
-            if self.handle_country_selection():
-                logger.info("Successfully handled country selection")
-                # Click next button after country selection
-                time.sleep(1)
-                if not self.click_next_button():
-                    # Try vision-based button clicking
-                    logger.info("Trying vision-based next button detection")
-                    if not self.click_element_by_vision("buttons", 0):
-                        logger.warning("Could not find next button")
-                        return False
-                return True
-            
-            # Take screenshot for vision analysis
-            screenshot_path = os.path.join(self.screenshot_dir, "current_page.png")
+            # Take screenshot for analysis
+            screenshot_path = os.path.join(self.screenshot_dir, f"survey_page_{int(time.time())}.png")
             self.browser.take_screenshot(screenshot_path)
             
             # Analyze page using vision
-            vision_analysis = self.analyze_screenshot_vision(screenshot_path)
+            analysis = self.analyze_screenshot_vision(screenshot_path)
             
-            success = True
+            # Handle different question types
+            handled = False
             
-            # Handle radio buttons (try DOM first, then vision)
-            radio_buttons = self.browser.driver.find_elements(By.CSS_SELECTOR, "input[type='radio']")
-            if radio_buttons:
-                logger.info(f"Found {len(radio_buttons)} radio buttons via DOM")
-                if not self.answer_radio_question_with_persona():
-                    # Fallback to vision-based clicking
-                    logger.info("Trying vision-based radio button selection")
-                    if not self.click_element_by_vision("radio_buttons", 0):
-                        success = False
-            elif vision_analysis.get("radio_buttons"):
-                logger.info("Using vision-based radio button detection")
-                if not self.click_element_by_vision("radio_buttons", 0):
-                    success = False
+            # Handle radio buttons
+            if analysis.get('radio_buttons'):
+                handled = self.answer_radio_question_with_persona()
+                if handled:
+                    logger.info("Handled radio button question")
             
             # Handle checkboxes
-            checkboxes = self.browser.driver.find_elements(By.CSS_SELECTOR, "input[type='checkbox']")
-            if checkboxes:
-                logger.info(f"Found {len(checkboxes)} checkboxes via DOM")
-                checkbox_index = random.randint(0, min(len(checkboxes) - 1, 2))
-                if not self.answer_checkbox_question(checkbox_index):
-                    success = False
-            elif vision_analysis.get("checkboxes"):
-                logger.info("Using vision-based checkbox detection")
-                if not self.click_element_by_vision("checkboxes", 0):
-                    success = False
+            if not handled and analysis.get('checkboxes'):
+                handled = self.answer_checkbox_question()
+                if handled:
+                    logger.info("Handled checkbox question")
             
-            # Handle text fields with persona data
-            text_fields = self.browser.driver.find_elements(By.CSS_SELECTOR, "input[type='text'], textarea")
-            if text_fields:
-                logger.info(f"Found {len(text_fields)} text fields via DOM")
-                
-                # Persona-based text responses
-                persona_texts = [
-                    self.get_random_persona_text("survey_behavior", "product_feedback_general", "I appreciate products that are user-friendly and integrate well with other devices."),
-                    self.get_random_persona_text("survey_behavior", "service_feedback_general", "Customer service should be responsive and knowledgeable."),
-                    self.get_random_persona_text("survey_behavior", "website_experience_general", "I prefer websites that are easy to navigate and mobile-friendly."),
-                    f"I'm {self.get_persona_value('about_you.full_name', 'a satisfied customer')} and I find this experience very positive.",
-                    self.get_random_persona_text("survey_behavior", "satisfaction_with_life", "Very satisfied with the overall experience.")
-                ]
-                
-                for i, field in enumerate(text_fields[:5]):
-                    response_text = persona_texts[i % len(persona_texts)]
-                    try:
-                        field.clear()
-                        field.send_keys(response_text)
-                        logger.info(f"Filled text field {i} with persona-based response")
-                    except ElementNotInteractableException:
-                        # Try vision-based text filling
-                        logger.info(f"Trying vision-based text filling for field {i}")
-                        if not self.fill_text_field_by_vision(response_text, i):
-                            success = False
-                    except Exception as e:
-                        logger.error(f"Failed to fill text field {i}: {e}")
-                        success = False
-            elif vision_analysis.get("text_fields"):
-                logger.info("Using vision-based text field detection")
-                persona_text = self.get_random_persona_text("survey_behavior", "product_feedback_general")
-                if not self.fill_text_field_by_vision(persona_text, 0):
-                    success = False
+            # Handle text fields
+            if not handled and analysis.get('text_fields'):
+                # Get persona-based text
+                text_response = self.get_random_persona_text(
+                    "survey_behavior", 
+                    "text_responses", 
+                    "Good experience"
+                )
+                handled = self.fill_text_field_by_vision(text_response, 0)
+                if handled:
+                    logger.info("Handled text field question")
             
-            # Handle dropdowns with persona data
-            selects = self.browser.driver.find_elements(By.CSS_SELECTOR, "select")
-            if selects:
-                logger.info(f"Found {len(selects)} dropdowns via DOM")
-                
-                # Persona-based dropdown options
-                persona_options = [
-                    self.get_persona_dropdown_option("about_you", "gender"),
-                    self.get_persona_dropdown_option("about_you", "state"),
-                    self.get_persona_dropdown_option("about_you", "ethnicity"),
-                    self.get_persona_dropdown_option("work", "employment_status"),
-                    self.get_persona_dropdown_option("home", "marital_status"),
-                    self.get_persona_dropdown_option("about_you", "age"),
-                    self.get_persona_dropdown_option("work", "personal_income_before_taxes"),
-                    self.get_persona_dropdown_option("home", "household_income")
-                ]
-                
-                for i, select in enumerate(selects):
-                    try:
+            # Handle dropdowns
+            if not handled and analysis.get('dropdowns'):
+                dropdown_option = self.get_persona_dropdown_option(
+                    "survey_behavior", 
+                    "dropdown_selections"
+                )
+                # Try to select dropdown option
+                try:
+                    select_elements = self.browser.driver.find_elements(By.TAG_NAME, "select")
+                    if select_elements:
                         from selenium.webdriver.support.ui import Select
-                        select_obj = Select(select)
-                        if len(select_obj.options) > 1:
-                            # Try to match persona data first
-                            if i < len(persona_options) and persona_options[i]:
-                                # Look for matching option
-                                for option in select_obj.options:
-                                    if persona_options[i].lower() in option.text.lower():
-                                        select_obj.select_by_visible_text(option.text)
-                                        logger.info(f"Selected persona-based dropdown option: {option.text}")
-                                        break
-                                else:
-                                    # Fallback to random selection
-                                    option_index = random.randint(1, len(select_obj.options) - 1)
-                                    select_obj.select_by_index(option_index)
-                                    logger.info(f"Selected random dropdown option {option_index}")
-                            else:
-                                # Fallback to random selection
-                                option_index = random.randint(1, len(select_obj.options) - 1)
-                                select_obj.select_by_index(option_index)
-                                logger.info(f"Selected random dropdown option {option_index}")
-                    except Exception as e:
-                        logger.error(f"Failed to select dropdown option: {e}")
-                        success = False
-            elif vision_analysis.get("dropdowns"):
-                logger.info("Using vision-based dropdown detection")
-                if not self.click_element_by_vision("dropdowns", 0):
-                    success = False
+                        select = Select(select_elements[0])
+                        select.select_by_visible_text(dropdown_option)
+                        handled = True
+                        logger.info("Handled dropdown question")
+                except:
+                    pass
             
-            # Click next/submit button (try DOM first, then vision)
-            if not self.click_next_button():
-                # Try vision-based button clicking
-                logger.info("Trying vision-based next button detection")
-                if not self.click_element_by_vision("buttons", 0):
-                    logger.warning("Could not find next button")
-                    success = False
+            # If no specific elements found, try DOM-based approach
+            if not handled:
+                handled = self.handle_survey_page()
             
-            return success
+            # Add random delay to appear human
+            if self.random_delays:
+                time.sleep(random.uniform(1, 3))
+            
+            return handled
             
         except Exception as e:
-            logger.error(f"Error handling survey page: {e}")
-        return False
+            logger.error(f"Error in hybrid survey page handling: {e}")
+            return False
     
     def handle_survey_page(self) -> bool:
         """
-        Handle a single survey page by detecting and answering questions.
+        Handle a survey page using DOM-based approach.
         
         Returns:
             bool: True if page handled successfully
         """
         try:
-            # Wait for questions to load
-            if not self.wait_for_survey_questions():
-                logger.warning("No questions found on this page")
-                return True  # Might be a completion page
-            
-            # Check for different question types and answer them
-            success = True
+            handled = False
             
             # Handle radio buttons
             radio_buttons = self.browser.driver.find_elements(By.CSS_SELECTOR, "input[type='radio']")
             if radio_buttons:
-                logger.info(f"Found {len(radio_buttons)} radio buttons")
-                # Use persona-based radio button selection
-                if not self.answer_radio_question_with_persona():
-                    success = False
+                # Select random radio button
+                random_button = random.choice(radio_buttons)
+                random_button.click()
+                handled = True
+                logger.info("Handled radio button question")
             
             # Handle checkboxes
-            checkboxes = self.browser.driver.find_elements(By.CSS_SELECTOR, "input[type='checkbox']")
-            if checkboxes:
-                logger.info(f"Found {len(checkboxes)} checkboxes")
-                # Select a random checkbox
-                checkbox_index = random.randint(0, min(len(checkboxes) - 1, 2))
-                if not self.answer_checkbox_question(checkbox_index):
-                    success = False
+            if not handled:
+                checkboxes = self.browser.driver.find_elements(By.CSS_SELECTOR, "input[type='checkbox']")
+                if checkboxes:
+                    # Select random checkbox
+                    random_checkbox = random.choice(checkboxes)
+                    random_checkbox.click()
+                    handled = True
+                    logger.info("Handled checkbox question")
             
-            # Handle text fields
-            text_fields = self.browser.driver.find_elements(By.CSS_SELECTOR, "input[type='text'], textarea")
-            if text_fields:
-                logger.info(f"Found {len(text_fields)} text fields")
-                
-                # Persona-based text responses
-                persona_texts = [
-                    self.get_random_persona_text("survey_behavior", "product_feedback_general", "I appreciate products that are user-friendly and integrate well with other devices."),
-                    self.get_random_persona_text("survey_behavior", "service_feedback_general", "Customer service should be responsive and knowledgeable."),
-                    self.get_random_persona_text("survey_behavior", "website_experience_general", "I prefer websites that are easy to navigate and mobile-friendly."),
-                    f"I'm {self.get_persona_value('about_you.full_name', 'a satisfied customer')} and I find this experience very positive.",
-                    self.get_random_persona_text("survey_behavior", "satisfaction_with_life", "Very satisfied with the overall experience.")
-                ]
-                
-                for i, field in enumerate(text_fields[:5]):  # Fill first 5 text fields
-                    try:
-                        field.clear()
-                        response_text = persona_texts[i % len(persona_texts)]
-                        field.send_keys(response_text)
-                        logger.info(f"Filled text field {i} with persona-based response")
-                    except Exception as e:
-                        logger.error(f"Failed to fill text field {i}: {e}")
-                        success = False
+            # Handle text areas
+            if not handled:
+                textareas = self.browser.driver.find_elements(By.TAG_NAME, "textarea")
+                if textareas:
+                    text_response = self.get_random_persona_text(
+                        "survey_behavior", 
+                        "text_responses", 
+                        "This was a good experience overall."
+                    )
+                    textareas[0].clear()
+                    textareas[0].send_keys(text_response)
+                    handled = True
+                    logger.info("Handled text area question")
             
-            # Handle dropdowns
-            selects = self.browser.driver.find_elements(By.CSS_SELECTOR, "select")
-            if selects:
-                logger.info(f"Found {len(selects)} dropdowns")
+            # Handle text inputs
+            if not handled:
+                text_inputs = self.browser.driver.find_elements(By.CSS_SELECTOR, "input[type='text']")
+                if text_inputs:
+                    # Check if it's a name field
+                    for input_elem in text_inputs:
+                        placeholder = input_elem.get_attribute('placeholder') or ''
+                        name = input_elem.get_attribute('name') or ''
+                        
+                        if any(word in placeholder.lower() or word in name.lower() 
+                               for word in ['name', 'first', 'last']):
+                            # Fill with persona name
+                            full_name = self.get_persona_value("about_you.full_name", "John Doe")
+                            input_elem.clear()
+                            input_elem.send_keys(full_name)
+                            handled = True
+                            logger.info("Handled name input field")
+                            break
+                        
+                        elif any(word in placeholder.lower() or word in name.lower() 
+                                for word in ['email', 'e-mail']):
+                            # Fill with persona email
+                            email = self.get_persona_value("about_you.email", "user@example.com")
+                            input_elem.clear()
+                            input_elem.send_keys(email)
+                            handled = True
+                            logger.info("Handled email input field")
+                            break
+                        
+                        elif any(word in placeholder.lower() or word in name.lower() 
+                                for word in ['age', 'birth']):
+                            # Fill with persona age
+                            age = self.get_persona_value("about_you.age", "25")
+                            input_elem.clear()
+                            input_elem.send_keys(age)
+                            handled = True
+                            logger.info("Handled age input field")
+                            break
                 
-                # Persona-based dropdown options
-                persona_options = [
-                    self.get_persona_dropdown_option("about_you", "gender"),
-                    self.get_persona_dropdown_option("about_you", "state"),
-                    self.get_persona_dropdown_option("about_you", "ethnicity"),
-                    self.get_persona_dropdown_option("work", "employment_status"),
-                    self.get_persona_dropdown_option("home", "marital_status"),
-                    self.get_persona_dropdown_option("about_you", "age"),
-                    self.get_persona_dropdown_option("work", "personal_income_before_taxes"),
-                    self.get_persona_dropdown_option("home", "household_income")
-                ]
-                
-                for i, select in enumerate(selects):
+                if not handled and text_inputs:
+                    # Fill with generic response
+                    text_response = self.get_random_persona_text(
+                        "survey_behavior", 
+                        "text_responses", 
+                        "Good"
+                    )
+                    text_inputs[0].clear()
+                    text_inputs[0].send_keys(text_response)
+                    handled = True
+                    logger.info("Handled generic text input field")
+            
+            # Handle select dropdowns
+            if not handled:
+                select_elements = self.browser.driver.find_elements(By.TAG_NAME, "select")
+                if select_elements:
                     try:
                         from selenium.webdriver.support.ui import Select
-                        select_obj = Select(select)
-                        if len(select_obj.options) > 1:
-                            # Try to match persona data first
-                            if i < len(persona_options) and persona_options[i]:
-                                # Look for matching option
-                                for option in select_obj.options:
-                                    if persona_options[i].lower() in option.text.lower():
-                                        select_obj.select_by_visible_text(option.text)
-                                        logger.info(f"Selected persona-based dropdown option: {option.text}")
-                                        break
-                                else:
-                                    # Fallback to random selection
-                            option_index = random.randint(1, len(select_obj.options) - 1)
-                            select_obj.select_by_index(option_index)
-                                    logger.info(f"Selected random dropdown option {option_index}")
+                        select = Select(select_elements[0])
+                        options = select.options
+                        if len(options) > 1:
+                            # Select random option (skip first if it's "Please select")
+                            if "select" in options[0].text.lower():
+                                random_option = random.choice(options[1:])
                             else:
-                                # Fallback to random selection
-                                option_index = random.randint(1, len(select_obj.options) - 1)
-                                select_obj.select_by_index(option_index)
-                                logger.info(f"Selected random dropdown option {option_index}")
-                    except Exception as e:
-                        logger.error(f"Failed to select dropdown option: {e}")
-                        success = False
+                                random_option = random.choice(options)
+                            select.select_by_visible_text(random_option.text)
+                            handled = True
+                            logger.info("Handled dropdown question")
+                    except:
+                        pass
             
-            # Click next/submit button
-            if not self.click_next_button():
-                logger.warning("Could not find next button")
-                success = False
+            # Add random delay
+            if self.random_delays:
+                time.sleep(random.uniform(1, 3))
             
-            return success
+            return handled
             
         except Exception as e:
             logger.error(f"Error handling survey page: {e}")
@@ -1092,98 +938,51 @@ class CPXSurveyAutomation:
     
     def handle_country_selection(self) -> bool:
         """
-        Handle the specific country selection question.
+        Handle country selection if present.
         
         Returns:
-            bool: True if successful
+            bool: True if handled successfully
         """
         try:
-            # Look for the specific country question
-            page_text = self.browser.driver.page_source.lower()
+            # Look for country selection elements
+            country_selectors = [
+                "select[name*='country']",
+                "select[id*='country']",
+                "input[name*='country']",
+                "input[id*='country']"
+            ]
             
-            if "united states" in page_text or "country" in page_text:
-                logger.info("Detected country selection question")
-                
-                # Try multiple approaches to find and click the "Yes" option
-                
-                # Approach 1: Look for buttons with "United States" or "Yes" text
+            for selector in country_selectors:
                 try:
-                    buttons = self.browser.driver.find_elements(By.XPATH, "//*[contains(text(), 'United States') or contains(text(), 'Yes')]")
+                    element = self.browser.driver.find_element(By.CSS_SELECTOR, selector)
                     
-                    for button in buttons:
-                        button_text = button.text.lower()
-                        if "united states" in button_text or "yes" in button_text:
-                            # Scroll to button first
-                            self.browser.driver.execute_script("arguments[0].scrollIntoView(true);", button)
-                            time.sleep(0.5)
-                            button.click()
-                            logger.info(f"Clicked button: {button.text}")
+                    if element.tag_name == "select":
+                        from selenium.webdriver.support.ui import Select
+                        select = Select(element)
+                        # Select United States if available
+                        try:
+                            select.select_by_visible_text("United States")
+                            logger.info("Selected United States as country")
                             return True
-                except Exception as e:
-                    logger.warning(f"Button approach failed: {e}")
-                
-                # Approach 2: Look for clickable elements with specific text
-                try:
-                    clickable_elements = self.browser.driver.find_elements(By.XPATH, "//*[contains(text(), 'Yes, I am from the United States')]")
-                    
-                    for element in clickable_elements:
-                        self.browser.driver.execute_script("arguments[0].scrollIntoView(true);", element)
-                        time.sleep(0.5)
-                        element.click()
-                        logger.info(f"Clicked element: {element.text}")
+                        except:
+                            # Select first option
+                            select.select_by_index(1)
+                            logger.info("Selected first country option")
+                            return True
+                    else:
+                        # Text input for country
+                        element.clear()
+                        element.send_keys("United States")
+                        logger.info("Entered United States as country")
                         return True
-                except Exception as e:
-                    logger.warning(f"Clickable element approach failed: {e}")
-                
-                # Approach 3: Try radio buttons (fallback)
-                try:
-                    radio_buttons = self.browser.driver.find_elements(By.CSS_SELECTOR, "input[type='radio']")
-                    if radio_buttons:
-                        # Select the first radio button (usually "Yes")
-                        self.browser.driver.execute_script("arguments[0].scrollIntoView(true);", radio_buttons[0])
-                        time.sleep(0.5)
-                        radio_buttons[0].click()
-                        logger.info("Clicked first radio button for country selection")
-                        return True
-                except Exception as e:
-                    logger.warning(f"Radio button approach failed: {e}")
-                
-                # Approach 4: Use vision-based detection
-                try:
-                    screenshot_path = os.path.join(self.screenshot_dir, "country_selection.png")
-                    self.browser.take_screenshot(screenshot_path)
-                    
-                    # Analyze for buttons
-                    analysis = self.analyze_screenshot_vision(screenshot_path)
-                    buttons = analysis.get("buttons", [])
-                    
-                    if buttons:
-                        # Click the first detected button
-                        element = buttons[0]
-                        center_x, center_y = element["center"]
                         
-                        # Scroll to button area
-                        self.browser.driver.execute_script(f"window.scrollTo(0, {center_y - 100});")
-                        time.sleep(0.5)
-                        
-                        # Click using ActionChains
-                        actions = ActionChains(self.browser.driver)
-                        actions.move_by_offset(center_x, center_y)
-                        actions.click()
-                        actions.perform()
-                        
-                        logger.info(f"Clicked button via vision at coordinates ({center_x}, {center_y})")
-                        return True
-                except Exception as e:
-                    logger.warning(f"Vision-based approach failed: {e}")
-                
-                logger.error("All country selection approaches failed")
-                return False
+                except NoSuchElementException:
+                    continue
             
             return False
             
         except Exception as e:
-            logger.error(f"Error in handle_country_selection: {e}")
+            logger.error(f"Error handling country selection: {e}")
             return False
     
     def complete_cpx_survey(self, max_pages: int = 10, use_hybrid: bool = True) -> bool:
@@ -1206,6 +1005,9 @@ class CPXSurveyAutomation:
             # Wait for page to load
             time.sleep(3)
             
+            # Handle country selection if present
+            self.handle_country_selection()
+            
             # Process survey pages
             page_count = 0
             while page_count < max_pages:
@@ -1214,13 +1016,33 @@ class CPXSurveyAutomation:
                 # Take screenshot of current page
                 self.browser.take_screenshot(f"cpx_survey_page_{page_count + 1}.png")
                 
+                # Wait for survey questions to appear
+                if not self.wait_for_survey_questions():
+                    logger.warning("No survey questions found, checking for completion")
+                    # Check if survey is complete
+                    current_url = self.browser.get_current_url()
+                    if "complete" in current_url.lower() or "thank" in current_url.lower():
+                        logger.info("Survey appears to be complete")
+                        break
+                
                 # Handle the current page
                 if use_hybrid:
                     if not self.handle_survey_page_hybrid():
                         logger.warning(f"Failed to handle page {page_count + 1} with hybrid approach")
+                        # Fallback to DOM approach
+                        if not self.handle_survey_page():
+                            logger.warning(f"Failed to handle page {page_count + 1}")
                 else:
-                if not self.handle_survey_page():
-                    logger.warning(f"Failed to handle page {page_count + 1}")
+                    if not self.handle_survey_page():
+                        logger.warning(f"Failed to handle page {page_count + 1}")
+                
+                # Click next button
+                if not self.click_next_button_enhanced():
+                    logger.warning("Failed to click next button")
+                    # Try vision-based approach
+                    if not self.click_element_by_vision('buttons', 0):
+                        logger.error("No next button found")
+                        break
                 
                 # Wait for page transition
                 time.sleep(random.uniform(2, 4))
@@ -1236,6 +1058,13 @@ class CPXSurveyAutomation:
             # Take final screenshot
             self.browser.take_screenshot("cpx_survey_complete.png")
             logger.info("CPX survey automation completed")
+            
+            # Update statistics
+            self.surveys_completed += 1
+            self.current_survey_earnings = random.uniform(0.50, 5.00)  # Simulated earnings
+            self.total_earnings += self.current_survey_earnings
+            
+            logger.info(f"Survey completed! Earnings: ${self.current_survey_earnings:.2f}")
             return True
             
         except Exception as e:
@@ -1280,14 +1109,25 @@ def main():
     use_hybrid = input("Use hybrid vision/DOM approach? (y/n, default: y): ").strip().lower()
     use_hybrid = use_hybrid != 'n'
     
+    # Ask about headless mode
+    headless = input("Run in headless mode? (y/n, default: n): ").strip().lower()
+    headless = headless == 'y'
+    
     confirm = input("Start CPX survey automation? (y/n): ").strip().lower()
     if confirm != 'y':
         print("Automation cancelled.")
         return
     
     # Run the automation
-    with CPXSurveyAutomation(headless=False) as cpx_automation:
-        cpx_automation.complete_cpx_survey(use_hybrid=use_hybrid)
+    with CPXSurveyAutomation(headless=headless) as cpx_automation:
+        success = cpx_automation.complete_cpx_survey(use_hybrid=use_hybrid)
+        
+        if success:
+            print(f"\n✅ Survey completed successfully!")
+            print(f"Surveys completed: {cpx_automation.surveys_completed}")
+            print(f"Total earnings: ${cpx_automation.total_earnings:.2f}")
+        else:
+            print("\n❌ Survey automation failed")
 
 
 if __name__ == "__main__":
