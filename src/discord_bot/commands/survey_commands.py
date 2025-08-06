@@ -6,6 +6,7 @@ Handles survey-related commands like !survey, !status, !earnings, etc.
 
 import discord
 from discord.ext import commands
+from discord import app_commands
 from loguru import logger
 from typing import Dict, Any
 import asyncio
@@ -17,8 +18,8 @@ class SurveyCommands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         
-    @commands.command(name="status")
-    async def status(self, ctx):
+    @app_commands.command(name="status", description="Check the current survey bot status.")
+    async def status(self, interaction: discord.Interaction):
         """Check the current survey bot status."""
         try:
             embed = discord.Embed(
@@ -50,14 +51,14 @@ class SurveyCommands(commands.Cog):
                 inline=False
             )
             
-            await ctx.send(embed=embed)
+            await interaction.response.send_message(embed=embed)
             
         except Exception as e:
             logger.error(f"Error in status command: {e}")
-            await ctx.send("❌ Error getting bot status")
+            await interaction.response.send_message("❌ Error getting bot status", ephemeral=True)
     
-    @commands.command(name="earnings")
-    async def earnings(self, ctx):
+    @app_commands.command(name="earnings", description="View earnings statistics.")
+    async def earnings(self, interaction: discord.Interaction):
         """View earnings statistics."""
         try:
             earnings = await self.bot.db_manager.get_earnings()
@@ -86,17 +87,17 @@ class SurveyCommands(commands.Cog):
                 inline=True
             )
             
-            await ctx.send(embed=embed)
+            await interaction.response.send_message(embed=embed)
             
         except Exception as e:
             logger.error(f"Error in earnings command: {e}")
-            await ctx.send("❌ Error getting earnings")
+            await interaction.response.send_message("❌ Error getting earnings", ephemeral=True)
     
-    @commands.command(name="start")
-    async def start_survey(self, ctx):
+    @app_commands.command(name="start", description="Start a new survey.")
+    async def start_survey(self, interaction: discord.Interaction):
         """Start a new survey."""
         try:
-            await ctx.send("🔍 Searching for available surveys...")
+            await interaction.response.send_message("🔍 Searching for available surveys...", ephemeral=True)
             
             # This would integrate with CPX Research
             # For now, just show a placeholder
@@ -112,14 +113,14 @@ class SurveyCommands(commands.Cog):
                 inline=False
             )
             
-            await ctx.send(embed=embed)
+            await interaction.followup.send(embed=embed)
             
         except Exception as e:
             logger.error(f"Error starting survey: {e}")
-            await ctx.send("❌ Error starting survey")
+            await interaction.followup.send("❌ Error starting survey", ephemeral=True)
     
-    @commands.command(name="stop")
-    async def stop_survey(self, ctx):
+    @app_commands.command(name="stop", description="Stop survey automation.")
+    async def stop_survey(self, interaction: discord.Interaction):
         """Stop survey automation."""
         try:
             embed = discord.Embed(
@@ -128,14 +129,14 @@ class SurveyCommands(commands.Cog):
                 color=0xff0000
             )
             
-            await ctx.send(embed=embed)
+            await interaction.response.send_message(embed=embed)
             
         except Exception as e:
             logger.error(f"Error stopping survey: {e}")
-            await ctx.send("❌ Error stopping survey")
+            await interaction.response.send_message("❌ Error stopping survey", ephemeral=True)
     
-    @commands.command(name="help")
-    async def help_survey(self, ctx):
+    @app_commands.command(name="help_survey", description="Show survey command help.")
+    async def help_survey(self, interaction: discord.Interaction):
         """Show survey command help."""
         embed = discord.Embed(
             title="📚 Survey Commands Help",
@@ -173,7 +174,7 @@ class SurveyCommands(commands.Cog):
             inline=False
         )
         
-        await ctx.send(embed=embed)
+        await interaction.response.send_message(embed=embed)
 
 
 async def setup(bot):

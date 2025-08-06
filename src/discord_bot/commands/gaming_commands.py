@@ -6,6 +6,7 @@ Handles gaming-related commands like !mine, !fish, !rob, etc.
 
 import discord
 from discord.ext import commands
+from discord import app_commands
 from loguru import logger
 import random
 import asyncio
@@ -17,8 +18,8 @@ class GamingCommands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         
-    @commands.command(name="mine")
-    async def mine(self, ctx):
+    @app_commands.command(name="mine", description="Mine for cryptocurrency.")
+    async def mine(self, interaction: discord.Interaction):
         """Mine for cryptocurrency."""
         try:
             # Simulate mining
@@ -42,14 +43,14 @@ class GamingCommands(commands.Cog):
                 inline=True
             )
             
-            await ctx.send(embed=embed)
+            await interaction.response.send_message(embed=embed)
             
         except Exception as e:
             logger.error(f"Error in mine command: {e}")
-            await ctx.send("❌ Error while mining")
+            await interaction.response.send_message("❌ Error while mining", ephemeral=True)
     
-    @commands.command(name="fish")
-    async def fish(self, ctx):
+    @app_commands.command(name="fish", description="Fish for cryptocurrency.")
+    async def fish(self, interaction: discord.Interaction):
         """Fish for cryptocurrency."""
         try:
             # Simulate fishing
@@ -73,14 +74,14 @@ class GamingCommands(commands.Cog):
                 inline=True
             )
             
-            await ctx.send(embed=embed)
+            await interaction.response.send_message(embed=embed)
             
         except Exception as e:
             logger.error(f"Error in fish command: {e}")
-            await ctx.send("❌ Error while fishing")
+            await interaction.response.send_message("❌ Error while fishing", ephemeral=True)
     
-    @commands.command(name="rob")
-    async def rob(self, ctx):
+    @app_commands.command(name="rob", description="Rob the bank for cryptocurrency.")
+    async def rob(self, interaction: discord.Interaction):
         """Rob the bank for cryptocurrency."""
         try:
             # Simulate robbery
@@ -112,14 +113,14 @@ class GamingCommands(commands.Cog):
                     inline=True
                 )
             
-            await ctx.send(embed=embed)
+            await interaction.response.send_message(embed=embed)
             
         except Exception as e:
             logger.error(f"Error in rob command: {e}")
-            await ctx.send("❌ Error during robbery")
+            await interaction.response.send_message("❌ Error during robbery", ephemeral=True)
     
-    @commands.command(name="daily")
-    async def daily(self, ctx):
+    @app_commands.command(name="daily", description="Collect daily reward.")
+    async def daily(self, interaction: discord.Interaction):
         """Collect daily reward."""
         try:
             # Simulate daily reward
@@ -143,14 +144,14 @@ class GamingCommands(commands.Cog):
                 inline=True
             )
             
-            await ctx.send(embed=embed)
+            await interaction.response.send_message(embed=embed)
             
         except Exception as e:
             logger.error(f"Error in daily command: {e}")
-            await ctx.send("❌ Error collecting daily reward")
+            await interaction.response.send_message("❌ Error collecting daily reward", ephemeral=True)
     
-    @commands.command(name="balance")
-    async def balance(self, ctx):
+    @app_commands.command(name="balance", description="Check your cryptocurrency balance.")
+    async def balance(self, interaction: discord.Interaction):
         """Check your cryptocurrency balance."""
         try:
             # Get balance from database
@@ -174,14 +175,14 @@ class GamingCommands(commands.Cog):
                 inline=True
             )
             
-            await ctx.send(embed=embed)
+            await interaction.response.send_message(embed=embed)
             
         except Exception as e:
             logger.error(f"Error in balance command: {e}")
-            await ctx.send("❌ Error getting balance")
+            await interaction.response.send_message("❌ Error getting balance", ephemeral=True)
     
-    @commands.command(name="help")
-    async def help_gaming(self, ctx):
+    @app_commands.command(name="help_gaming", description="Show gaming command help.")
+    async def help_gaming(self, interaction: discord.Interaction):
         """Show gaming command help."""
         embed = discord.Embed(
             title="🎮 Gaming Commands Help",
@@ -225,7 +226,7 @@ class GamingCommands(commands.Cog):
             inline=False
         )
         
-        await ctx.send(embed=embed)
+        await interaction.response.send_message(embed=embed)
 
 
 async def setup(bot):
